@@ -1,49 +1,37 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
-using EasySave.Models; // Assure-toi que ton ModelJob.cs est bien dans ce namespace
+using EasySave.Models;
 using Newtonsoft.Json;
 
 namespace EasySave
 {
     class Program
     {
-        // On déclare la liste et le fichier ici pour qu'ils soient accessibles partout
         static string configFile = "jobs.json";
         static List<ModelJob> myJobs = new List<ModelJob>();
 
         static void Main(string[] args)
         {
-            // 1. Charger les données au démarrage
             LoadData();
 
             bool continuer = true;
             while (continuer)
             {
+
                 Console.WriteLine("\n--- MENU EASY SAVE ---");
                 Console.WriteLine("1. Lister les travaux");
                 Console.WriteLine("2. Ajouter un travail");
-                Console.WriteLine("3. Quitter");
+                Console.WriteLine("3. LANCER TOUTES LES SAUVEGARDES");
+                Console.WriteLine("4. Quitter");
                 Console.Write("Votre choix : ");
 
                 string choix = Console.ReadLine();
 
-                if (choix == "1")
-                {
-                    ListerTravaux();
-                }
-                else if (choix == "2")
-                {
-                    AjouterTravail();
-                }
-                else if (choix == "3")
-                {
-                    continuer = false;
-                }
-                else
-                {
-                    Console.WriteLine("Choix invalide !");
-                }
+                if (choix == "1") { ListerTravaux(); }
+                else if (choix == "2") { AjouterTravail(); }
+                else if (choix == "3") { ExecuterSauvegarde(); }
+                else if (choix == "4") { continuer = false; }
             }
         }
 
@@ -54,8 +42,6 @@ namespace EasySave
                 string json = File.ReadAllText(configFile);
                 myJobs = JsonConvert.DeserializeObject<List<ModelJob>>(json);
             }
-            
-            // Si le fichier est vide ou inexistant, on initialise une liste vide
             if (myJobs == null) myJobs = new List<ModelJob>();
         }
 
@@ -68,9 +54,23 @@ namespace EasySave
             }
             else
             {
-                foreach (var job in myJobs)
+                for (int i = 0; i < myJobs.Count; i++)
                 {
-                    Console.WriteLine("Nom: " + job.Name + " | Source: " + job.Source);
+                    Console.WriteLine((i + 1) + ". Nom: " + myJobs[i].Name + " | Source: " + myJobs[i].Source);
+                }
+
+                Console.Write("\nEntrez le numéro du travail à supprimer (ou Entrée pour annuler) : ");
+                string choix = Console.ReadLine();
+
+                if (int.TryParse(choix, out int index) && index > 0 && index <= myJobs.Count)
+                {
+                    myJobs.RemoveAt(index - 1); 
+
+                    // Sauvegarde du changement dans le JSON
+                    string json = JsonConvert.SerializeObject(myJobs, Formatting.Indented);
+                    File.WriteAllText(configFile, json);
+
+                    Console.WriteLine("Travail supprimé !");
                 }
             }
         }
@@ -85,15 +85,50 @@ namespace EasySave
 
             ModelJob nouveau = new ModelJob();
             Console.Write("Nom : "); nouveau.Name = Console.ReadLine();
-            Console.Write("Source : "); nouveau.Source = Console.ReadLine();
-            Console.Write("Cible : "); nouveau.Target = Console.ReadLine();
+
+            Console.Write("Source : ");
+            nouveau.Source = Console.ReadLine().Replace("\"", "").Trim();
+
+            Console.Write("Cible : ");
+            nouveau.Target = Console.ReadLine().Replace("\"", "").Trim();
 
             myJobs.Add(nouveau);
 
-            // Sauvegarde immédiate
             string json = JsonConvert.SerializeObject(myJobs, Formatting.Indented);
             File.WriteAllText(configFile, json);
-            Console.WriteLine("Travail enregistré avec succès !");
+            Console.WriteLine("Travail enregistré !");
+        }
+
+        static void ExecuterSauvegarde()
+        {
+            foreach (var job in myJobs)
+            {
+                try
+                {
+                    Console.WriteLine("\nCopie de : " + job.Name);
+
+                    if (!Directory.Exists(job.Source))
+                    {
+                        Console.WriteLine("Erreur : Dossier source introuvable.");
+                        continue;
+                    }
+
+                    Directory.CreateDirectory(job.Target);
+
+                    foreach (string file in Directory.GetFiles(job.Source))
+                    {
+                        string name = Path.GetFileName(file);
+                        string dest = Path.Combine(job.Target, name);
+                        File.Copy(file, dest, true);
+                        Console.WriteLine(" Fichier copié : " + name);
+                    }
+                    Console.WriteLine("Succès pour " + job.Name);
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine("Erreur sur ce travail : " + ex.Message);
+                }
+            }
         }
     }
 }
