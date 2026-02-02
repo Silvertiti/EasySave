@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using EasySave.Models;
 using Newtonsoft.Json;
+using EasyLog;
 
 namespace EasySave
 {
