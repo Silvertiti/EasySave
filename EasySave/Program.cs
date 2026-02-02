@@ -17,6 +17,12 @@ namespace EasySave
         {
             LoadData();
 
+            if (args.Length > 0)
+            {
+                ExecuterSauvegarde(); 
+                return; 
+            }
+
             bool continuer = true;
             while (continuer)
             {
