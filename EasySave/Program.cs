@@ -4,6 +4,7 @@ using System.IO;
 using EasySave.Models;
 using Newtonsoft.Json;
 using EasyLog;
+using System.Diagnostics; 
 
 namespace EasySave
 {
@@ -126,14 +127,28 @@ namespace EasySave
 
                         if (!job.IsFull && File.Exists(dest))
                         {
-                            if (File.GetLastWriteTime(file) <= File.GetLastWriteTime(dest))
-                            {
-                                continue;
-                            }
+                            if (File.GetLastWriteTime(file) <= File.GetLastWriteTime(dest)) continue;
                         }
 
                         Directory.CreateDirectory(Path.GetDirectoryName(dest));
-                        File.Copy(file, dest, true);
+
+                        long fileSize = new FileInfo(file).Length; 
+                        Stopwatch sw = Stopwatch.StartNew();       
+
+                        try
+                        {
+                            File.Copy(file, dest, true);
+                            sw.Stop(); 
+
+                            EasyLog.LogManager.SaveLog(job.Name, file, dest, fileSize, sw.Elapsed.TotalMilliseconds);
+                        }
+                        catch (Exception)
+                        {
+                            sw.Stop();
+                            EasyLog.LogManager.SaveLog(job.Name, file, dest, fileSize, -1);
+                            throw; 
+                        }
+
                         Console.WriteLine(" Fichier copié : " + relatif);
                     }
                     Console.WriteLine("Succès pour " + job.Name);
