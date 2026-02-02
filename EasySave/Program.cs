@@ -92,6 +92,10 @@ namespace EasySave
             Console.Write("Cible : ");
             nouveau.Target = Console.ReadLine().Replace("\"", "").Trim();
 
+            Console.Write("Type (1 pour Complet, 2 pour Différentiel) : ");
+            string type = Console.ReadLine();
+            nouveau.IsFull = (type == "1"); 
+
             myJobs.Add(nouveau);
 
             string json = JsonConvert.SerializeObject(myJobs, Formatting.Indented);
@@ -105,23 +109,29 @@ namespace EasySave
             {
                 try
                 {
-                    Console.WriteLine("\n--- Travail : " + job.Name + " ---");
+                    Console.WriteLine("\n--- Travail : " + job.Name + " (" + (job.IsFull ? "Complet" : "Différentiel") + ") ---");
 
                     if (!Directory.Exists(job.Source))
                     {
                         Console.WriteLine("Erreur : Source introuvable.");
                         continue;
                     }
-
                     string[] files = Directory.GetFiles(job.Source, "*.*", SearchOption.AllDirectories);
 
                     foreach (string file in files)
                     {
-                        string relatif = file.Replace(job.Source, "");
-                        string dest = Path.Combine(job.Target, relatif.TrimStart('\\'));
+                        string relatif = file.Replace(job.Source, "").TrimStart('\\');
+                        string dest = Path.Combine(job.Target, relatif);
+
+                        if (!job.IsFull && File.Exists(dest))
+                        {
+                            if (File.GetLastWriteTime(file) <= File.GetLastWriteTime(dest))
+                            {
+                                continue;
+                            }
+                        }
 
                         Directory.CreateDirectory(Path.GetDirectoryName(dest));
-
                         File.Copy(file, dest, true);
                         Console.WriteLine(" Fichier copié : " + relatif);
                     }

@@ -7,6 +7,7 @@ namespace EasySave.Models
         public string Name { get; set; }
         public string Source { get; set; }
         public string Target { get; set; }
+        public bool IsFull { get; set; }
 
     }
 }
