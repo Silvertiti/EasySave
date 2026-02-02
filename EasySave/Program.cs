@@ -105,22 +105,25 @@ namespace EasySave
             {
                 try
                 {
-                    Console.WriteLine("\nCopie de : " + job.Name);
+                    Console.WriteLine("\n--- Travail : " + job.Name + " ---");
 
                     if (!Directory.Exists(job.Source))
                     {
-                        Console.WriteLine("Erreur : Dossier source introuvable.");
+                        Console.WriteLine("Erreur : Source introuvable.");
                         continue;
                     }
 
-                    Directory.CreateDirectory(job.Target);
+                    string[] files = Directory.GetFiles(job.Source, "*.*", SearchOption.AllDirectories);
 
-                    foreach (string file in Directory.GetFiles(job.Source))
+                    foreach (string file in files)
                     {
-                        string name = Path.GetFileName(file);
-                        string dest = Path.Combine(job.Target, name);
+                        string relatif = file.Replace(job.Source, "");
+                        string dest = Path.Combine(job.Target, relatif.TrimStart('\\'));
+
+                        Directory.CreateDirectory(Path.GetDirectoryName(dest));
+
                         File.Copy(file, dest, true);
-                        Console.WriteLine(" Fichier copié : " + name);
+                        Console.WriteLine(" Fichier copié : " + relatif);
                     }
                     Console.WriteLine("Succès pour " + job.Name);
                 }
@@ -129,6 +132,8 @@ namespace EasySave
                     Console.WriteLine("Erreur sur ce travail : " + ex.Message);
                 }
             }
+            Console.WriteLine("\nAppuyez sur une touche pour continuer...");
+            Console.ReadKey();
         }
     }
 }
