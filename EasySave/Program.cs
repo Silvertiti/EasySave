@@ -144,27 +144,45 @@ namespace EasySave
                         Console.WriteLine("Erreur : Source introuvable.");
                         continue;
                     }
+
                     string[] files = Directory.GetFiles(job.Source, "*.*", SearchOption.AllDirectories);
+
+                    int totalFiles = files.Length;
+                    long totalSize = 0;
+                    foreach (string f in files) totalSize += new FileInfo(f).Length;
+
+                    int filesLeft = totalFiles;
+                    long sizeLeft = totalSize;
+
+                    UpdateEtat(job.Name, job.Source, job.Target, "ACTIF", totalFiles, totalSize, filesLeft, sizeLeft);
 
                     foreach (string file in files)
                     {
                         string relatif = file.Replace(job.Source, "").TrimStart('\\');
                         string dest = Path.Combine(job.Target, relatif);
+                        long fileSize = new FileInfo(file).Length; 
 
                         if (!job.IsFull && File.Exists(dest))
                         {
-                            if (File.GetLastWriteTime(file) <= File.GetLastWriteTime(dest)) continue;
+                            if (File.GetLastWriteTime(file) <= File.GetLastWriteTime(dest))
+                            {
+                                filesLeft--;
+                                sizeLeft -= fileSize;
+                                UpdateEtat(job.Name, file, dest, "ACTIF", totalFiles, totalSize, filesLeft, sizeLeft);
+                                continue;
+                            }
                         }
 
                         Directory.CreateDirectory(Path.GetDirectoryName(dest));
 
-                        long fileSize = new FileInfo(file).Length; 
-                        Stopwatch sw = Stopwatch.StartNew();       
+                        UpdateEtat(job.Name, file, dest, "ACTIF", totalFiles, totalSize, filesLeft, sizeLeft);
+
+                        Stopwatch sw = Stopwatch.StartNew();
 
                         try
                         {
                             File.Copy(file, dest, true);
-                            sw.Stop(); 
+                            sw.Stop();
 
                             EasyLog.LogManager.SaveLog(job.Name, file, dest, fileSize, sw.Elapsed.TotalMilliseconds);
                         }
@@ -172,11 +190,17 @@ namespace EasySave
                         {
                             sw.Stop();
                             EasyLog.LogManager.SaveLog(job.Name, file, dest, fileSize, -1);
-                            throw; 
+                            throw;
                         }
+
+                        filesLeft--;
+                        sizeLeft -= fileSize;
 
                         Console.WriteLine(" Fichier copié : " + relatif);
                     }
+
+                    UpdateEtat(job.Name, "", "", "INACTIF", totalFiles, totalSize, 0, 0);
+
                     Console.WriteLine("Succès pour " + job.Name);
                 }
                 catch (Exception ex)
