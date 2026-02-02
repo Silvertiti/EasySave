@@ -105,6 +105,32 @@ namespace EasySave
             Console.WriteLine("Travail enregistré !");
         }
 
+        static void UpdateEtat(string jobName, string src, string dest, string state, int totalF, long totalS, int leftF, long leftS)
+        {
+            int prog = 0;
+            if (totalF > 0)
+            {
+                prog = 100 - (leftF * 100 / totalF);
+            }
+
+            ModelEtat etat = new ModelEtat()
+            {
+                Name = jobName,
+                SourceFile = src,
+                TargetFile = dest,
+                State = state,
+                TotalFiles = totalF,
+                TotalSize = totalS,
+                FilesLeft = leftF,
+                SizeLeft = leftS,
+                Progression = prog,
+                Timestamp = DateTime.Now.ToString("dd/MM/yyyy HH:mm:ss")
+            };
+
+            string json = JsonConvert.SerializeObject(etat, Formatting.Indented);
+            File.WriteAllText("state.json", json);
+        }
+
         static void ExecuterSauvegarde()
         {
             foreach (var job in myJobs)
