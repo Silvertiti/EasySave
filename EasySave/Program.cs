@@ -4,7 +4,7 @@ using System.IO;
 using EasySave.Models;
 using Newtonsoft.Json;
 using EasyLog;
-using System.Diagnostics; 
+using System.Diagnostics;
 
 namespace EasySave
 {
@@ -19,20 +19,37 @@ namespace EasySave
 
             if (args.Length > 0)
             {
-                ExecuterSauvegarde(); 
-                return; 
+                Lang.Init("en");
+                ExecuterSauvegarde();
+                return;
+            }
+
+            Console.WriteLine("\nSelect Language / Choisissez la langue :");
+            Console.WriteLine("1. English");
+            Console.WriteLine("2. Français");
+            Console.Write("Choice / Choix : ");
+
+            ConsoleKeyInfo key = Console.ReadKey();
+            Console.WriteLine();
+
+            if (key.KeyChar == '1')
+            {
+                Lang.Init("en"); 
+            }
+            else
+            {
+                Lang.Init("fr"); 
             }
 
             bool continuer = true;
             while (continuer)
             {
-
-                Console.WriteLine("\n--- MENU EASY SAVE ---");
-                Console.WriteLine("1. Lister les travaux");
-                Console.WriteLine("2. Ajouter un travail");
-                Console.WriteLine("3. LANCER TOUTES LES SAUVEGARDES");
-                Console.WriteLine("4. Quitter");
-                Console.Write("Votre choix : ");
+                Console.WriteLine(Lang.Msg["MenuTitle"]);
+                Console.WriteLine(Lang.Msg["List"]);
+                Console.WriteLine(Lang.Msg["Add"]);
+                Console.WriteLine(Lang.Msg["Run"]);
+                Console.WriteLine(Lang.Msg["Quit"]);
+                Console.Write(Lang.Msg["Choice"]);
 
                 string choix = Console.ReadLine();
 
@@ -55,30 +72,30 @@ namespace EasySave
 
         static void ListerTravaux()
         {
-            Console.WriteLine("\n--- LISTE DES TRAVAUX ---");
+            Console.WriteLine(Lang.Msg["MenuTitle"]);
+
             if (myJobs.Count == 0)
             {
-                Console.WriteLine("Aucun travail trouvé.");
+                Console.WriteLine(Lang.Msg["NoJob"]);
             }
             else
             {
                 for (int i = 0; i < myJobs.Count; i++)
                 {
-                    Console.WriteLine((i + 1) + ". Nom: " + myJobs[i].Name + " | Source: " + myJobs[i].Source);
+                    Console.WriteLine((i + 1) + ". " + myJobs[i].Name + " | " + myJobs[i].Source);
                 }
 
-                Console.Write("\nEntrez le numéro du travail à supprimer (ou Entrée pour annuler) : ");
+                Console.Write(Lang.Msg["DeletePrompt"]);
                 string choix = Console.ReadLine();
 
                 if (int.TryParse(choix, out int index) && index > 0 && index <= myJobs.Count)
                 {
-                    myJobs.RemoveAt(index - 1); 
+                    myJobs.RemoveAt(index - 1);
 
-                    // Sauvegarde du changement dans le JSON
                     string json = JsonConvert.SerializeObject(myJobs, Formatting.Indented);
                     File.WriteAllText(configFile, json);
 
-                    Console.WriteLine("Travail supprimé !");
+                    Console.WriteLine(Lang.Msg["Deleted"]);
                 }
             }
         }
@@ -87,28 +104,28 @@ namespace EasySave
         {
             if (myJobs.Count >= 5)
             {
-                Console.WriteLine("Erreur : Maximum 5 travaux !");
+                Console.WriteLine(Lang.Msg["MaxJobs"]);
                 return;
             }
 
             ModelJob nouveau = new ModelJob();
-            Console.Write("Nom : "); nouveau.Name = Console.ReadLine();
+            Console.Write(Lang.Msg["EnterName"]); nouveau.Name = Console.ReadLine();
 
-            Console.Write("Source : ");
+            Console.Write(Lang.Msg["EnterSource"]);
             nouveau.Source = Console.ReadLine().Replace("\"", "").Trim();
 
-            Console.Write("Cible : ");
+            Console.Write(Lang.Msg["EnterTarget"]);
             nouveau.Target = Console.ReadLine().Replace("\"", "").Trim();
 
-            Console.Write("Type (1 pour Complet, 2 pour Différentiel) : ");
+            Console.Write(Lang.Msg["EnterType"]);
             string type = Console.ReadLine();
-            nouveau.IsFull = (type == "1"); 
+            nouveau.IsFull = (type == "1");
 
             myJobs.Add(nouveau);
 
             string json = JsonConvert.SerializeObject(myJobs, Formatting.Indented);
             File.WriteAllText(configFile, json);
-            Console.WriteLine("Travail enregistré !");
+            Console.WriteLine(Lang.Msg["Saved"]);
         }
 
         static void UpdateEtat(string jobName, string src, string dest, string state, int totalF, long totalS, int leftF, long leftS)
@@ -143,20 +160,18 @@ namespace EasySave
             {
                 try
                 {
-                    Console.WriteLine("\n--- Travail : " + job.Name + " (" + (job.IsFull ? "Complet" : "Différentiel") + ") ---");
+                    Console.WriteLine(Lang.Msg["Start"] + job.Name + " (" + (job.IsFull ? "Full" : "Diff") + ") ---");
 
                     if (!Directory.Exists(job.Source))
                     {
-                        Console.WriteLine("Erreur : Source introuvable.");
+                        Console.WriteLine(Lang.Msg["SourceMissing"]);
                         continue;
                     }
 
                     string[] files = Directory.GetFiles(job.Source, "*.*", SearchOption.AllDirectories);
-
                     int totalFiles = files.Length;
                     long totalSize = 0;
                     foreach (string f in files) totalSize += new FileInfo(f).Length;
-
                     int filesLeft = totalFiles;
                     long sizeLeft = totalSize;
 
@@ -166,7 +181,7 @@ namespace EasySave
                     {
                         string relatif = file.Replace(job.Source, "").TrimStart('\\');
                         string dest = Path.Combine(job.Target, relatif);
-                        long fileSize = new FileInfo(file).Length; 
+                        long fileSize = new FileInfo(file).Length;
 
                         if (!job.IsFull && File.Exists(dest))
                         {
@@ -180,16 +195,13 @@ namespace EasySave
                         }
 
                         Directory.CreateDirectory(Path.GetDirectoryName(dest));
-
                         UpdateEtat(job.Name, file, dest, "ACTIF", totalFiles, totalSize, filesLeft, sizeLeft);
 
                         Stopwatch sw = Stopwatch.StartNew();
-
                         try
                         {
                             File.Copy(file, dest, true);
                             sw.Stop();
-
                             EasyLog.LogManager.SaveLog(job.Name, file, dest, fileSize, sw.Elapsed.TotalMilliseconds);
                         }
                         catch (Exception)
@@ -202,19 +214,18 @@ namespace EasySave
                         filesLeft--;
                         sizeLeft -= fileSize;
 
-                        Console.WriteLine(" Fichier copié : " + relatif);
+                        Console.WriteLine(Lang.Msg["Copy"] + relatif);
                     }
 
                     UpdateEtat(job.Name, "", "", "INACTIF", totalFiles, totalSize, 0, 0);
-
-                    Console.WriteLine("Succès pour " + job.Name);
+                    Console.WriteLine(Lang.Msg["Success"] + job.Name);
                 }
                 catch (Exception ex)
                 {
-                    Console.WriteLine("Erreur sur ce travail : " + ex.Message);
+                    Console.WriteLine(Lang.Msg["Error"] + ex.Message);
                 }
             }
-            Console.WriteLine("\nAppuyez sur une touche pour continuer...");
+            Console.WriteLine(Lang.Msg["PressKey"]);
             Console.ReadKey();
         }
     }
