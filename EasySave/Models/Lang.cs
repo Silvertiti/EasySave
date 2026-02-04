@@ -31,6 +31,7 @@ public static class Lang
             Msg["Deleted"] = "Job deleted!";
             Msg["DeletePrompt"] = "\nEnter job number to delete (or Enter to cancel): ";
             Msg["NoJob"] = "No job found.";
+            Msg["PressKey"] = "Press any key to continue...";
         }
         else // FRANCAIS (Défaut)
         {
@@ -55,6 +56,7 @@ public static class Lang
             Msg["Deleted"] = "Travail supprimé !";
             Msg["DeletePrompt"] = "\nEntrez le numéro du travail à supprimer (ou Entrée pour annuler) : ";
             Msg["NoJob"] = "Aucun travail trouvé.";
+            Msg["PressKey"] = "Appuyez sur une touche pour continuer...";
         }
     }
 }

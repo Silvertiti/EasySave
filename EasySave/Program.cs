@@ -24,6 +24,8 @@ namespace EasySave
                 return;
             }
 
+
+
             Console.WriteLine("\nSelect Language / Choisissez la langue :");
             Console.WriteLine("1. English");
             Console.WriteLine("2. Français");
