@@ -13,7 +13,6 @@ namespace EasySave.Controller
         {
             model.LoadData();
 
-            // 1. CLI (Automatisation)
             if (args.Length > 0)
             {
                 Lang.Init("en");
@@ -21,18 +20,14 @@ namespace EasySave.Controller
                 return;
             }
 
-            // 2. Langue
             view.ChoixLangue();
             var k = Console.ReadKey();
             Console.WriteLine();
             Lang.Init(k.KeyChar == '1' ? "en" : "fr");
 
-            // --- ON AFFICHE LE LOGO ICI ---
-            Console.Clear(); // On nettoie la console avant d'afficher le logo
+            Console.Clear(); 
             view.AfficherLogo();
-            // ------------------------------
 
-            // 3. Boucle Principale
             bool continuer = true;
             while (continuer)
             {
@@ -47,7 +42,6 @@ namespace EasySave.Controller
                         model.ExecuterSauvegarde(view.AfficherMessage);
                         view.AfficherMessage(Lang.Msg["PressKey"]);
                         Console.ReadKey();
-                        // On réaffiche le logo après une exécution pour faire propre
                         Console.Clear();
                         view.AfficherLogo();
                         break;
@@ -56,7 +50,6 @@ namespace EasySave.Controller
             }
         }
 
-        // ... Le reste de ton contrôleur reste identique ...
         void Lister()
         {
             view.AfficherListe(model.myJobs);
