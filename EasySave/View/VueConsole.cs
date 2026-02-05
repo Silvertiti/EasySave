@@ -4,8 +4,56 @@ using EasySave.Models;
 
 namespace EasySave.View
 {
-    public class VueConsole
+    public class ConsoleView
     {
+        public void AfficherLogo()
+        {
+            string logo = @"
+ /$$$$$$$$                                /$$$$$$                               
+| $$_____/                               /$$__  $$                              
+| $$        /$$$$$$   /$$$$$$$ /$$   /$$| $$  \__/  /$$$$$$  /$$    /$$ /$$$$$$ 
+| $$$$$    |____  $$ /$$_____/| $$  | $$|  $$$$$$  |____  $$|  $$  /$$//$$__  $$
+| $$__/     /$$$$$$$|  $$$$$$ | $$  | $$ \____  $$  /$$$$$$$ \  $$/$$/| $$$$$$$$
+| $$       /$$__  $$ \____  $$| $$  | $$ /$$  \ $$ /$$__  $$  \  $$$/ | $$_____/
+| $$$$$$$$|  $$$$$$$ /$$$$$$$/|  $$$$$$$|  $$$$$$/|  $$$$$$$   \  $/  |  $$$$$$$
+|________/ \_______/|_______/  \____  $$ \______/  \_______/    \_/    \_______/
+                               /$$  | $$                                        
+                              |  $$$$$$/                                        
+                               \______/                                                                                                                                              
+";
+
+            ConsoleColor[] colors = {
+                ConsoleColor.Red,
+                ConsoleColor.DarkYellow,
+                ConsoleColor.Yellow,
+                ConsoleColor.Green,
+                ConsoleColor.Cyan,
+                ConsoleColor.Blue,
+                ConsoleColor.Magenta
+            };
+
+            int colorIndex = 0;
+
+            foreach (char c in logo)
+            {
+                if (c == '\n' || c == '\r')
+                {
+                    Console.Write(c);
+                    continue;
+                }
+
+                Console.ForegroundColor = colors[colorIndex % colors.Length];
+
+                Console.Write(c);
+
+                colorIndex++;
+            }
+
+            Console.ResetColor();
+            Console.WriteLine("\nBienvenue dans EasySave CLI");
+            Console.WriteLine("--------------------------------------------------\n");
+        }
+
         public void AfficherMenu()
         {
             Console.WriteLine(Lang.Msg["MenuTitle"]);
