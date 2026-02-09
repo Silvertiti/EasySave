@@ -1,0 +1,12 @@
+C:\Users\methe\source\repos\EasySave\EasyLog\bin\Debug\net8.0\EasyLog.deps.json
+C:\Users\methe\source\repos\EasySave\EasyLog\bin\Debug\net8.0\EasyLog.pdb
+C:\Users\methe\source\repos\EasySave\EasyLog\obj\Debug\net8.0\EasyLog.csproj.AssemblyReference.cache
+C:\Users\methe\source\repos\EasySave\EasyLog\obj\Debug\net8.0\EasyLog.GeneratedMSBuildEditorConfig.editorconfig
+C:\Users\methe\source\repos\EasySave\EasyLog\obj\Debug\net8.0\EasyLog.AssemblyInfoInputs.cache
+C:\Users\methe\source\repos\EasySave\EasyLog\obj\Debug\net8.0\EasyLog.AssemblyInfo.cs
+C:\Users\methe\source\repos\EasySave\EasyLog\obj\Debug\net8.0\EasyLog.csproj.CoreCompileInputs.cache
+C:\Users\methe\source\repos\EasySave\EasyLog\obj\Debug\net8.0\EasyLog.dll
+C:\Users\methe\source\repos\EasySave\EasyLog\obj\Debug\net8.0\refint\EasyLog.dll
+C:\Users\methe\source\repos\EasySave\EasyLog\obj\Debug\net8.0\EasyLog.pdb
+C:\Users\methe\source\repos\EasySave\EasyLog\obj\Debug\net8.0\ref\EasyLog.dll
+C:\Users\methe\source\repos\EasySave\EasyLog\bin\Debug\net8.0\EasyLog.dll

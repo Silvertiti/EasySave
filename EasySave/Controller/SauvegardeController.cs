@@ -71,6 +71,7 @@ namespace EasySave.Controller
                 return;
             }
 
+
             view.AfficherMessage(Lang.Msg["EnterName"]); string nom = view.LireSaisie();
             view.AfficherMessage(Lang.Msg["EnterSource"]); string src = view.LireSaisie().Replace("\"", "").Trim();
             view.AfficherMessage(Lang.Msg["EnterTarget"]); string dest = view.LireSaisie().Replace("\"", "").Trim();

@@ -1,0 +1,24 @@
+﻿  Identification des projets ├á restaurer...
+  Tous les projets sont ├á jour pour la restauration.
+  EasyLog -> C:\Users\methe\source\repos\EasySave\EasyLog\bin\Debug\net8.0\EasyLog.dll
+C:\Users\methe\source\repos\EasySave\EasySave\obj\Debug\net8.0\EasySave.AssemblyInfo.cs(14,12): error CS0579: Attribut 'System.Reflection.AssemblyCompanyAttribute' en double [C:\Users\methe\source\repos\EasySave\EasySave\EasySave.csproj]
+C:\Users\methe\source\repos\EasySave\EasySave\obj\Debug\net8.0\EasySave.AssemblyInfo.cs(15,12): error CS0579: Attribut 'System.Reflection.AssemblyConfigurationAttribute' en double [C:\Users\methe\source\repos\EasySave\EasySave\EasySave.csproj]
+C:\Users\methe\source\repos\EasySave\EasySave\obj\Debug\net8.0\EasySave.AssemblyInfo.cs(16,12): error CS0579: Attribut 'System.Reflection.AssemblyFileVersionAttribute' en double [C:\Users\methe\source\repos\EasySave\EasySave\EasySave.csproj]
+C:\Users\methe\source\repos\EasySave\EasySave\obj\Debug\net8.0\EasySave.AssemblyInfo.cs(18,12): error CS0579: Attribut 'System.Reflection.AssemblyProductAttribute' en double [C:\Users\methe\source\repos\EasySave\EasySave\EasySave.csproj]
+C:\Users\methe\source\repos\EasySave\EasySave\obj\Debug\net8.0\EasySave.AssemblyInfo.cs(19,12): error CS0579: Attribut 'System.Reflection.AssemblyTitleAttribute' en double [C:\Users\methe\source\repos\EasySave\EasySave\EasySave.csproj]
+C:\Users\methe\source\repos\EasySave\EasySave\obj\Debug\net8.0\EasySave.AssemblyInfo.cs(20,12): error CS0579: Attribut 'System.Reflection.AssemblyVersionAttribute' en double [C:\Users\methe\source\repos\EasySave\EasySave\EasySave.csproj]
+
+├ëCHEC de la build.
+
+C:\Users\methe\source\repos\EasySave\EasySave\obj\Debug\net8.0\EasySave.AssemblyInfo.cs(14,12): error CS0579: Attribut 'System.Reflection.AssemblyCompanyAttribute' en double [C:\Users\methe\source\repos\EasySave\EasySave\EasySave.csproj]
+C:\Users\methe\source\repos\EasySave\EasySave\obj\Debug\net8.0\EasySave.AssemblyInfo.cs(15,12): error CS0579: Attribut 'System.Reflection.AssemblyConfigurationAttribute' en double [C:\Users\methe\source\repos\EasySave\EasySave\EasySave.csproj]
+C:\Users\methe\source\repos\EasySave\EasySave\obj\Debug\net8.0\EasySave.AssemblyInfo.cs(16,12): error CS0579: Attribut 'System.Reflection.AssemblyFileVersionAttribute' en double [C:\Users\methe\source\repos\EasySave\EasySave\EasySave.csproj]
+C:\Users\methe\source\repos\EasySave\EasySave\obj\Debug\net8.0\EasySave.AssemblyInfo.cs(18,12): error CS0579: Attribut 'System.Reflection.AssemblyProductAttribute' en double [C:\Users\methe\source\repos\EasySave\EasySave\EasySave.csproj]
+C:\Users\methe\source\repos\EasySave\EasySave\obj\Debug\net8.0\EasySave.AssemblyInfo.cs(19,12): error CS0579: Attribut 'System.Reflection.AssemblyTitleAttribute' en double [C:\Users\methe\source\repos\EasySave\EasySave\EasySave.csproj]
+C:\Users\methe\source\repos\EasySave\EasySave\obj\Debug\net8.0\EasySave.AssemblyInfo.cs(20,12): error CS0579: Attribut 'System.Reflection.AssemblyVersionAttribute' en double [C:\Users\methe\source\repos\EasySave\EasySave\EasySave.csproj]
+    0 Avertissement(s)
+    6 Erreur(s)
+
+Temps ├®coul├® 00:00:01.09
+
+Des mises ├á jour de la charge de travail sont disponibles. Ex├®cutez `dotnet workload list` pour plus dÔÇÖinformations.
