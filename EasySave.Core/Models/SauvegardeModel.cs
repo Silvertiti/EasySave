@@ -5,7 +5,7 @@ using System.Diagnostics;
 using Newtonsoft.Json;
 using EasyLog;
 
-namespace EasySave.Models
+namespace EasySave.Core.Models
 {
     public class SauvegardeModel
     {

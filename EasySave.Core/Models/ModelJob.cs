@@ -1,5 +1,5 @@
 ﻿
-namespace EasySave.Models
+namespace EasySave.Core.Models
 {
 
     public class ModelJob

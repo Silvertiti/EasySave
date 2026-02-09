@@ -1,5 +1,5 @@
 ﻿using System;
-using EasySave.Models;
+using EasySave.Core.Models;
 using EasySave.View;
 
 namespace EasySave.Controller
