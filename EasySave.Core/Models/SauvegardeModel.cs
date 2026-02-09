@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Diagnostics;
 using Newtonsoft.Json;
-using EasyLog;
+using EasyLog.Core.Logs;
 
 namespace EasySave.Core.Models
 {
