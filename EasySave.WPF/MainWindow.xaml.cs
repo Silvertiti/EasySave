@@ -1,6 +1,6 @@
 ﻿using EasySave.WPF.ViewModels;
 using System.Windows;
-using System.Windows.Input; // Nécessaire pour MouseButtonEventArgs
+using System.Windows.Input;
 
 namespace EasySave.WPF
 {
@@ -14,10 +14,6 @@ namespace EasySave.WPF
             _vm = new MainViewModel();
             this.DataContext = _vm;
         }
-
-        // --- GESTION DE LA FENÊTRE ---
-
-        // Permet de bouger la fenêtre en cliquant n'importe où
         private void Window_MouseDown(object sender, MouseButtonEventArgs e)
         {
             if (e.ChangedButton == MouseButton.Left)
@@ -49,12 +45,10 @@ namespace EasySave.WPF
             }
         }
 
-        // --- ACTIONS MÉTIER ---
-
         private void BtnCreate_Click(object sender, RoutedEventArgs e)
         {
+            //TEMPORAIRE TODO
             MessageBox.Show("Work in progress: Fenêtre d'ajout bientôt disponible !", "EasySave");
-            // Ici tu mettras plus tard : new CreateJobWindow().ShowDialog();
         }
 
         private void OnRunAllClick(object sender, RoutedEventArgs e)
@@ -64,7 +58,6 @@ namespace EasySave.WPF
 
         private void OnDeleteClick(object sender, RoutedEventArgs e)
         {
-            // On récupère l'élément cliqué
             var button = sender as System.Windows.Controls.Button;
             var job = button.DataContext as EasySave.Core.Models.ModelJob;
 
