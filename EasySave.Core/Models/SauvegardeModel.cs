@@ -46,73 +46,76 @@ namespace EasySave.Core.Models
         {
             foreach (var job in myJobs)
             {
-                try
-                {
-                    uiCallback(Lang.Msg["Start"] + job.Name);
+                ExecuterUnSeulJob(job, uiCallback);
+            }
+        }
 
-                    if (!Directory.Exists(job.Source))
+        public void ExecuterUnSeulJob(ModelJob job, Action<string> uiCallback)
+        {
+            try
+            {
+                uiCallback(Lang.Msg["Start"] + job.Name);
+
+                if (!Directory.Exists(job.Source))
+                {
+                    uiCallback(Lang.Msg["SourceMissing"]);
+                    return;
+                }
+
+                string[] files = Directory.GetFiles(job.Source, "*.*", SearchOption.AllDirectories);
+
+                int totalFiles = files.Length;
+                long totalSize = 0;
+                foreach (string f in files) totalSize += new FileInfo(f).Length;
+                int filesLeft = totalFiles;
+                long sizeLeft = totalSize;
+
+                UpdateEtat(job.Name, job.Source, job.Target, "ACTIF", totalFiles, totalSize, filesLeft, sizeLeft);
+
+                foreach (string file in files)
+                {
+                    string relatif = file.Replace(job.Source, "").TrimStart('\\');
+                    string dest = Path.Combine(job.Target, relatif);
+                    long fileSize = new FileInfo(file).Length;
+                    if (!job.IsFull && File.Exists(dest))
                     {
-                        uiCallback(Lang.Msg["SourceMissing"]);
-                        continue;
+                        if (File.GetLastWriteTime(file) <= File.GetLastWriteTime(dest))
+                        {
+                            filesLeft--;
+                            sizeLeft -= fileSize;
+                            UpdateEtat(job.Name, file, dest, "ACTIF", totalFiles, totalSize, filesLeft, sizeLeft);
+                            continue;
+                        }
                     }
 
-                    string[] files = Directory.GetFiles(job.Source, "*.*", SearchOption.AllDirectories);
+                    Directory.CreateDirectory(Path.GetDirectoryName(dest));
+                    UpdateEtat(job.Name, file, dest, "ACTIF", totalFiles, totalSize, filesLeft, sizeLeft);
 
-                    int totalFiles = files.Length;
-                    long totalSize = 0;
-                    foreach (string f in files) totalSize += new FileInfo(f).Length;
-                    int filesLeft = totalFiles;
-                    long sizeLeft = totalSize;
-
-                    UpdateEtat(job.Name, job.Source, job.Target, "ACTIF", totalFiles, totalSize, filesLeft, sizeLeft);
-
-                    foreach (string file in files)
+                    Stopwatch sw = Stopwatch.StartNew();
+                    try
                     {
-                        string relatif = file.Replace(job.Source, "").TrimStart('\\');
-                        string dest = Path.Combine(job.Target, relatif);
-                        long fileSize = new FileInfo(file).Length;
-
-                        if (!job.IsFull && File.Exists(dest))
-                        {
-                            if (File.GetLastWriteTime(file) <= File.GetLastWriteTime(dest))
-                            {
-                                filesLeft--;
-                                sizeLeft -= fileSize;
-                                UpdateEtat(job.Name, file, dest, "ACTIF", totalFiles, totalSize, filesLeft, sizeLeft);
-                                continue;
-                            }
-                        }
-
-                        Directory.CreateDirectory(Path.GetDirectoryName(dest));
-                        UpdateEtat(job.Name, file, dest, "ACTIF", totalFiles, totalSize, filesLeft, sizeLeft);
-
-                        Stopwatch sw = Stopwatch.StartNew();
-                        try
-                        {
-                            File.Copy(file, dest, true);
-                            sw.Stop();
-                            LogManager.SaveLog(job.Name, file, dest, fileSize, sw.Elapsed.TotalMilliseconds);
-                        }
-                        catch
-                        {
-                            sw.Stop();
-                            LogManager.SaveLog(job.Name, file, dest, fileSize, -1);
-                            throw;
-                        }
-
-                        filesLeft--;
-                        sizeLeft -= fileSize;
-
-                        uiCallback(Lang.Msg["Copy"] + relatif);
+                        File.Copy(file, dest, true);
+                        sw.Stop();
+                        LogManager.SaveLog(job.Name, file, dest, fileSize, sw.Elapsed.TotalMilliseconds);
+                    }
+                    catch
+                    {
+                        sw.Stop();
+                        LogManager.SaveLog(job.Name, file, dest, fileSize, -1);
+                        throw;
                     }
 
-                    UpdateEtat(job.Name, "", "", "INACTIF", totalFiles, totalSize, 0, 0);
-                    uiCallback(Lang.Msg["Success"] + job.Name);
+                    filesLeft--;
+                    sizeLeft -= fileSize;
+                    uiCallback(Lang.Msg["Copy"] + relatif);
                 }
-                catch (Exception ex)
-                {
-                    uiCallback(Lang.Msg["Error"] + ex.Message);
-                }
+
+                UpdateEtat(job.Name, "", "", "INACTIF", totalFiles, totalSize, 0, 0);
+                uiCallback(Lang.Msg["Success"] + job.Name);
+            }
+            catch (Exception ex)
+            {
+                uiCallback(Lang.Msg["Error"] + ex.Message);
             }
         }
 

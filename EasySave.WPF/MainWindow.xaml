@@ -147,7 +147,7 @@
 
                     <ListBox Grid.Row="1" ItemsSource="{Binding JobsList}" 
                              Background="Transparent" BorderThickness="0" 
-                             ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+                             ScrollViewer.HorizontalScrollBarVisibility="Disabled" SelectionChanged="ListBox_SelectionChanged">
                         <ListBox.ItemContainerStyle>
                             <Style TargetType="ListBoxItem">
                                 <Setter Property="Background" Value="Transparent"/>
@@ -187,7 +187,7 @@
                                         </StackPanel>
 
                                         <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
-                                            <Button Content="▶ Run" Height="32" Width="70"
+                                            <Button Click="OnRunJobClick" Content="▶ Run" Height="32" Width="70"
                                                     Background="#3E3E42" Foreground="White" BorderThickness="0" Margin="0,0,10,0" Cursor="Hand">
                                                 <Button.Template>
                                                     <ControlTemplate TargetType="Button">

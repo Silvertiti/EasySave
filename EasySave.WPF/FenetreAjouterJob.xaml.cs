@@ -1,4 +1,5 @@
 ﻿using System.Windows;
+using System.Windows.Input;
 
 namespace EasySave.WPF
 {
@@ -33,6 +34,18 @@ namespace EasySave.WPF
         }
 
         private void BtnCancel_Click(object sender, RoutedEventArgs e)
+        {
+            this.DialogResult = false;
+            this.Close();
+        }
+
+        private void Window_MouseDown(object sender, MouseButtonEventArgs e)
+        {
+            if (e.ChangedButton == MouseButton.Left)
+                this.DragMove();
+        }
+
+        private void BtnHeaderClose_Click(object sender, RoutedEventArgs e)
         {
             this.DialogResult = false;
             this.Close();

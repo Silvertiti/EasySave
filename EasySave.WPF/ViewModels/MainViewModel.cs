@@ -18,8 +18,6 @@ namespace EasySave.WPF.ViewModels
             _model = new SauvegardeModel();
             _model.LoadData();
             JobsList = new ObservableCollection<ModelJob>(_model.myJobs);
-
-            // --- TA LOGIQUE DE TEXTE EXACTE ---
             if (Lang.Msg.ContainsKey("MenuTitle"))
                 Title = Lang.Msg["MenuTitle"].Replace("\n", "").Replace("-", "").Trim();
             else
@@ -30,51 +28,56 @@ namespace EasySave.WPF.ViewModels
             BtnAddText = "➕  " + rawAdd;
 
             string rawRun = Lang.Msg.ContainsKey("Run") ? Lang.Msg["Run"] : "Run";
-            if (rawRun.Contains("LANCER TOUTES"))
-            {
-                BtnRunText = "Tout Lancer";
-            }
-            else
-            {
-                if (rawRun.Contains(".")) rawRun = rawRun.Substring(rawRun.IndexOf('.') + 1).Trim();
-                rawRun = System.Globalization.CultureInfo.CurrentCulture.TextInfo.ToTitleCase(rawRun.ToLower());
-                BtnRunText = rawRun;
-            }
+            BtnRunText = rawRun.Contains("LANCER") ? "Tout Lancer" : "🚀  " + rawRun;
         }
-
-        // --- MÉTHODES ---
-
         public void RunAllSave()
         {
-            _model.ExecuterSauvegarde((msg) => { });
-            MessageBox.Show(Lang.Msg.ContainsKey("Success") ? Lang.Msg["Success"] : "Done", "EasySave");
-        }
+            if (JobsList.Count == 0)
+            {
+                MessageBox.Show("Aucun travail dans la liste.", "Info");
+                return;
+            }
+            _model.ExecuterSauvegarde((msg) =>
+            {
+                if (msg.Contains("Error") || msg.Contains("Missing") || msg.Contains("introuvable"))
+                {
+                    MessageBox.Show(msg, "Erreur Critique", MessageBoxButton.OK, MessageBoxImage.Error);
+                }
+            });
 
-        public void DeleteJob(ModelJob jobToDelete)
+            MessageBox.Show("Tous les travaux ont été traités.", "Terminé");
+        }
+        public void RunJob(ModelJob job)
         {
-            var result = MessageBox.Show($"Delete {jobToDelete.Name} ?", "Confirm", MessageBoxButton.YesNo, MessageBoxImage.Warning);
+            if (job == null) return;
+            _model.ExecuterUnSeulJob(job, (msg) =>
+            {
+                if (msg.Contains("Error") || msg.Contains("Missing") || msg.Contains("introuvable"))
+                {
+                    MessageBox.Show(msg, "Erreur Critique", MessageBoxButton.OK, MessageBoxImage.Error);
+                }
+            });
+
+            MessageBox.Show($"Travail '{job.Name}' terminé.", "Succès");
+        }
+        public void DeleteJob(ModelJob job)
+        {
+            var result = MessageBox.Show($"Supprimer {job.Name} ?", "Confirmation", MessageBoxButton.YesNo, MessageBoxImage.Warning);
+
             if (result == MessageBoxResult.Yes)
             {
-                int index = _model.myJobs.IndexOf(jobToDelete);
+                int index = _model.myJobs.IndexOf(job);
                 if (index >= 0)
                 {
                     _model.DeleteJob(index);
-                    JobsList.Remove(jobToDelete);
+                    JobsList.Remove(job);
                 }
             }
         }
-
-        // --- C'EST ICI QUE J'AI AJOUTÉ LE NÉCESSAIRE ---
-        public void CreateJob(string name, string source, string dest, bool isFull)
+        public void CreateJob(string name, string src, string dest, bool isFull)
         {
-            // 1. Ajoute au backend (SauvegardeModel + JSON)
-            _model.AddJob(name, source, dest, isFull);
-
-            // 2. Récupère le dernier objet créé par le modèle
-            var newJob = _model.myJobs.Last();
-
-            // 3. Ajoute à l'interface (ObservableCollection)
-            JobsList.Add(newJob);
+            _model.AddJob(name, src, dest, isFull);
+            JobsList.Add(_model.myJobs.Last());
         }
     }
 }

@@ -14,7 +14,6 @@ namespace EasySave.WPF
             _vm = new MainViewModel();
             this.DataContext = _vm;
         }
-
         private void Window_MouseDown(object sender, MouseButtonEventArgs e)
         {
             if (e.ChangedButton == MouseButton.Left)
@@ -59,6 +58,14 @@ namespace EasySave.WPF
         {
             _vm.RunAllSave();
         }
+        private void OnRunJobClick(object sender, RoutedEventArgs e)
+        {
+            if (sender is System.Windows.Controls.Button btn &&
+                btn.DataContext is EasySave.Core.Models.ModelJob job)
+            {
+                _vm.RunJob(job);
+            }
+        }
 
         private void OnDeleteClick(object sender, RoutedEventArgs e)
         {
@@ -67,6 +74,11 @@ namespace EasySave.WPF
             {
                 _vm.DeleteJob(job);
             }
+        }
+
+        private void ListBox_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
+        {
+
         }
     }
 }
