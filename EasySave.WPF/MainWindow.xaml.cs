@@ -14,41 +14,45 @@ namespace EasySave.WPF
             _vm = new MainViewModel();
             this.DataContext = _vm;
         }
+
         private void Window_MouseDown(object sender, MouseButtonEventArgs e)
         {
             if (e.ChangedButton == MouseButton.Left)
                 this.DragMove();
         }
 
-        // Minimiser
         private void BtnMinimize_Click(object sender, RoutedEventArgs e)
         {
             this.WindowState = WindowState.Minimized;
         }
 
-        // Fermer
+        private void BtnMaximize_Click(object sender, RoutedEventArgs e)
+        {
+            if (this.WindowState == WindowState.Maximized)
+                this.WindowState = WindowState.Normal;
+            else
+                this.WindowState = WindowState.Maximized;
+        }
+
         private void BtnClose_Click(object sender, RoutedEventArgs e)
         {
             Application.Current.Shutdown();
         }
 
-        //Maximiser la fenêtre
-        private void BtnMaximize_Click(object sender, RoutedEventArgs e)
-        {
-            if (this.WindowState == WindowState.Maximized)
-            {
-                this.WindowState = WindowState.Normal;
-            }
-            else
-            {
-                this.WindowState = WindowState.Maximized;
-            }
-        }
-
         private void BtnCreate_Click(object sender, RoutedEventArgs e)
         {
-            //TEMPORAIRE TODO
-            MessageBox.Show("Work in progress: Fenêtre d'ajout bientôt disponible !", "EasySave");
+            var fenetreAjout = new FenetreAjouterJob();
+            fenetreAjout.Owner = this;
+            bool? result = fenetreAjout.ShowDialog();
+            if (result == true)
+            {
+                _vm.CreateJob(
+                    fenetreAjout.JobName,
+                    fenetreAjout.SourcePath,
+                    fenetreAjout.TargetPath,
+                    fenetreAjout.IsFull
+                );
+            }
         }
 
         private void OnRunAllClick(object sender, RoutedEventArgs e)
@@ -58,10 +62,8 @@ namespace EasySave.WPF
 
         private void OnDeleteClick(object sender, RoutedEventArgs e)
         {
-            var button = sender as System.Windows.Controls.Button;
-            var job = button.DataContext as EasySave.Core.Models.ModelJob;
-
-            if (job != null)
+            if (sender is System.Windows.Controls.Button button &&
+                button.DataContext is EasySave.Core.Models.ModelJob job)
             {
                 _vm.DeleteJob(job);
             }

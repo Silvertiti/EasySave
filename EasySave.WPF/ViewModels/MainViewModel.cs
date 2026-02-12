@@ -18,13 +18,17 @@ namespace EasySave.WPF.ViewModels
             _model = new SauvegardeModel();
             _model.LoadData();
             JobsList = new ObservableCollection<ModelJob>(_model.myJobs);
+
+            // --- TA LOGIQUE DE TEXTE EXACTE ---
             if (Lang.Msg.ContainsKey("MenuTitle"))
                 Title = Lang.Msg["MenuTitle"].Replace("\n", "").Replace("-", "").Trim();
             else
                 Title = "EasySave Dashboard";
+
             string rawAdd = Lang.Msg.ContainsKey("Add") ? Lang.Msg["Add"] : "Add";
             if (rawAdd.Contains(".")) rawAdd = rawAdd.Substring(rawAdd.IndexOf('.') + 1).Trim();
             BtnAddText = "➕  " + rawAdd;
+
             string rawRun = Lang.Msg.ContainsKey("Run") ? Lang.Msg["Run"] : "Run";
             if (rawRun.Contains("LANCER TOUTES"))
             {
@@ -39,10 +43,11 @@ namespace EasySave.WPF.ViewModels
         }
 
         // --- MÉTHODES ---
+
         public void RunAllSave()
         {
             _model.ExecuterSauvegarde((msg) => { });
-            MessageBox.Show(Lang.Msg.ContainsKey("Success") ? Lang.Msg["Success"] : "Done!", "EasySave");
+            MessageBox.Show(Lang.Msg.ContainsKey("Success") ? Lang.Msg["Success"] : "Done", "EasySave");
         }
 
         public void DeleteJob(ModelJob jobToDelete)
@@ -57,6 +62,19 @@ namespace EasySave.WPF.ViewModels
                     JobsList.Remove(jobToDelete);
                 }
             }
+        }
+
+        // --- C'EST ICI QUE J'AI AJOUTÉ LE NÉCESSAIRE ---
+        public void CreateJob(string name, string source, string dest, bool isFull)
+        {
+            // 1. Ajoute au backend (SauvegardeModel + JSON)
+            _model.AddJob(name, source, dest, isFull);
+
+            // 2. Récupère le dernier objet créé par le modèle
+            var newJob = _model.myJobs.Last();
+
+            // 3. Ajoute à l'interface (ObservableCollection)
+            JobsList.Add(newJob);
         }
     }
 }
