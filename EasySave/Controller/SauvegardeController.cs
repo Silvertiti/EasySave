@@ -46,8 +46,31 @@ namespace EasySave.Controller
                         view.AfficherLogo();
                         break;
                     case "4": continuer = false; break;
+                    case "5": GererParametres(); break;
                 }
             }
+        }
+
+        void GererParametres()
+        {
+            bool retour = false;
+            while (!retour)
+            {
+                Console.Clear();
+                view.AfficherSettings(EasyLog.LogManager.UseXml);
+                string? choix = view.LireSaisie();
+
+                if (choix == "1")
+                {
+                    EasyLog.LogManager.UseXml = !EasyLog.LogManager.UseXml;
+                }
+                else if (choix == "2")
+                {
+                    retour = true;
+                }
+            }
+            Console.Clear();
+            view.AfficherLogo();
         }
 
         void Lister()

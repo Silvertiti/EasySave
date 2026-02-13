@@ -36,6 +36,10 @@ namespace EasySave.Core.Models
                 Msg["DeletePrompt"] = "\nEnter job number to delete (or Enter to cancel): ";
                 Msg["NoJob"] = "No job found.";
                 Msg["PressKey"] = "\nPress a key to continue...";
+                Msg["Settings"] = "5. Settings";
+                Msg["CurrentLog"] = "Current log format: ";
+                Msg["ChangeLog"] = "1. Switch format (JSON <-> XML)";
+                Msg["Back"] = "2. Back";
             }
             else
             {
@@ -60,6 +64,10 @@ namespace EasySave.Core.Models
                 Msg["DeletePrompt"] = "\nEntrez le numéro du travail à supprimer (ou Entrée pour annuler) : ";
                 Msg["NoJob"] = "Aucun travail trouvé.";
                 Msg["PressKey"] = "\nAppuyez sur une touche pour continuer...";
+                Msg["Settings"] = "5. Paramètres";
+                Msg["CurrentLog"] = "Format des logs actuel : ";
+                Msg["ChangeLog"] = "1. Changer le format (JSON <-> XML)";
+                Msg["Back"] = "2. Retour";
             }
         }
     }

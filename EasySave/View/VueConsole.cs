@@ -61,6 +61,16 @@ namespace EasySave.View
             Console.WriteLine(Lang.Msg["Add"]);
             Console.WriteLine(Lang.Msg["Run"]);
             Console.WriteLine(Lang.Msg["Quit"]);
+            Console.WriteLine(Lang.Msg["Settings"]);
+            Console.Write(Lang.Msg["Choice"]);
+        }
+
+        public void AfficherSettings(bool useXml)
+        {
+            Console.WriteLine(Lang.Msg["MenuTitle"]);
+            Console.WriteLine(Lang.Msg["CurrentLog"] + (useXml ? "XML" : "JSON"));
+            Console.WriteLine(Lang.Msg["ChangeLog"]);
+            Console.WriteLine(Lang.Msg["Back"]);
             Console.Write(Lang.Msg["Choice"]);
         }
 
