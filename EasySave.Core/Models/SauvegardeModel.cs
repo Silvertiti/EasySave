@@ -10,7 +10,8 @@ namespace EasySave.Core.Models
     public class SauvegardeModel
     {
         public List<ModelJob> myJobs = new List<ModelJob>();
-        string configFile = "jobs.json";
+        private string configFile = "jobs.json";
+        private string stateFile = "state.json";
 
         public void LoadData()
         {
@@ -26,10 +27,9 @@ namespace EasySave.Core.Models
             string json = JsonConvert.SerializeObject(myJobs, Formatting.Indented);
             File.WriteAllText(configFile, json);
         }
-
-        public void AddJob(string name, string src, string dest, bool isFull)
+        public void AddJob(ModelJob newJob)
         {
-            myJobs.Add(new ModelJob { Name = name, Source = src, Target = dest, IsFull = isFull });
+            myJobs.Add(newJob);
             SaveData();
         }
 
@@ -54,19 +54,21 @@ namespace EasySave.Core.Models
         {
             try
             {
-                uiCallback(Lang.Msg["Start"] + job.Name);
+                string startMsg = Lang.Msg.ContainsKey("Start") ? Lang.Msg["Start"] : "Start: ";
+                uiCallback(startMsg + job.Name);
 
                 if (!Directory.Exists(job.Source))
                 {
-                    uiCallback(Lang.Msg["SourceMissing"]);
+                    string missingMsg = Lang.Msg.ContainsKey("SourceMissing") ? Lang.Msg["SourceMissing"] : "Source not found";
+                    uiCallback(missingMsg + " -> " + job.Source);
                     return;
                 }
 
                 string[] files = Directory.GetFiles(job.Source, "*.*", SearchOption.AllDirectories);
-
                 int totalFiles = files.Length;
                 long totalSize = 0;
                 foreach (string f in files) totalSize += new FileInfo(f).Length;
+
                 int filesLeft = totalFiles;
                 long sizeLeft = totalSize;
 
@@ -87,8 +89,10 @@ namespace EasySave.Core.Models
                             continue;
                         }
                     }
+                    string? dirDest = Path.GetDirectoryName(dest);
+                    if (!string.IsNullOrEmpty(dirDest) && !Directory.Exists(dirDest))
+                        Directory.CreateDirectory(dirDest);
 
-                    Directory.CreateDirectory(Path.GetDirectoryName(dest));
                     UpdateEtat(job.Name, file, dest, "ACTIF", totalFiles, totalSize, filesLeft, sizeLeft);
 
                     Stopwatch sw = Stopwatch.StartNew();
@@ -98,45 +102,59 @@ namespace EasySave.Core.Models
                         sw.Stop();
                         LogManager.SaveLog(job.Name, file, dest, fileSize, sw.Elapsed.TotalMilliseconds);
                     }
-                    catch
+                    catch (Exception ex)
                     {
                         sw.Stop();
                         LogManager.SaveLog(job.Name, file, dest, fileSize, -1);
-                        throw;
+
+                        string errMsg = Lang.Msg.ContainsKey("Error") ? Lang.Msg["Error"] : "Error: ";
+                        uiCallback(errMsg + ex.Message);
                     }
 
                     filesLeft--;
                     sizeLeft -= fileSize;
-                    uiCallback(Lang.Msg["Copy"] + relatif);
+
+                    string copyMsg = Lang.Msg.ContainsKey("Copy") ? Lang.Msg["Copy"] : "Copy: ";
+                    uiCallback(copyMsg + relatif);
                 }
 
                 UpdateEtat(job.Name, "", "", "INACTIF", totalFiles, totalSize, 0, 0);
-                uiCallback(Lang.Msg["Success"] + job.Name);
+
+                string successMsg = Lang.Msg.ContainsKey("Success") ? Lang.Msg["Success"] : "Success: ";
+                uiCallback(successMsg + job.Name);
             }
             catch (Exception ex)
             {
-                uiCallback(Lang.Msg["Error"] + ex.Message);
+                uiCallback("CRITICAL ERROR: " + ex.Message);
             }
         }
 
         private void UpdateEtat(string jobName, string src, string dest, string state, int totalF, long totalS, int leftF, long leftS)
         {
-            int prog = (totalF > 0) ? 100 - (leftF * 100 / totalF) : 0;
-
-            ModelEtat etat = new ModelEtat()
+            try
             {
-                Name = jobName,
-                SourceFile = src,
-                TargetFile = dest,
-                State = state,
-                TotalFiles = totalF,
-                TotalSize = totalS,
-                FilesLeft = leftF,
-                SizeLeft = leftS,
-                Progression = prog,
-                Timestamp = DateTime.Now.ToString("dd/MM/yyyy HH:mm:ss")
-            };
-            File.WriteAllText("state.json", JsonConvert.SerializeObject(etat, Formatting.Indented));
+                int prog = (totalF > 0) ? 100 - (leftF * 100 / totalF) : 100;
+
+                ModelEtat etat = new ModelEtat()
+                {
+                    Name = jobName,
+                    SourceFile = src,
+                    TargetFile = dest,
+                    State = state,
+                    TotalFiles = totalF,
+                    TotalSize = totalS,
+                    FilesLeft = leftF,
+                    SizeLeft = leftS,
+                    Progression = prog,
+                    Timestamp = DateTime.Now.ToString("dd/MM/yyyy HH:mm:ss")
+                };
+
+                string json = JsonConvert.SerializeObject(etat, Formatting.Indented);
+                File.WriteAllText(stateFile, json);
+            }
+            catch
+            {
+            }
         }
     }
 }
