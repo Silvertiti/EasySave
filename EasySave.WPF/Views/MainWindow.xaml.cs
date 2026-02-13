@@ -61,7 +61,7 @@ namespace EasySave.WPF
         private void OnRunJobClick(object sender, RoutedEventArgs e)
         {
             if (sender is System.Windows.Controls.Button btn &&
-                btn.DataContext is EasySave.Core.Models.ModelJob job)
+                btn.DataContext is Core.Models.ModelJob job)
             {
                 _vm.RunJob(job);
             }
@@ -70,7 +70,7 @@ namespace EasySave.WPF
         private void OnDeleteClick(object sender, RoutedEventArgs e)
         {
             if (sender is System.Windows.Controls.Button button &&
-                button.DataContext is EasySave.Core.Models.ModelJob job)
+                button.DataContext is Core.Models.ModelJob job)
             {
                 _vm.DeleteJob(job);
             }

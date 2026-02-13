@@ -3,7 +3,7 @@ using System.Windows.Input;
 using EasySave.Core.Models;
 
 namespace EasySave.WPF.Views
-{
+{ 
     public partial class LanguageWindow : Window
     {
         public LanguageWindow()
