@@ -9,28 +9,34 @@ namespace EasySave.WPF.ViewModels
     {
         public ObservableCollection<ModelJob> JobsList { get; set; }
         public SauvegardeModel _model;
-
         public string Title { get; set; }
+        public string LblMenu { get; set; }
         public string BtnAddText { get; set; }
         public string BtnRunText { get; set; }
+        public string BtnDeleteAllText { get; set; }
+        public string BtnSettingsText { get; set; }
 
         public MainViewModel()
         {
             _model = new SauvegardeModel();
             _model.LoadData();
             JobsList = new ObservableCollection<ModelJob>(_model.myJobs);
-            if (Lang.Msg.ContainsKey("MenuTitle"))
-                Title = Lang.Msg["MenuTitle"].Replace("\n", "").Replace("-", "").Trim();
-            else
-                Title = "EasySave Dashboard";
-            string rawAdd = Lang.Msg.ContainsKey("Add") ? Lang.Msg["Add"] : "Add";
-            if (rawAdd.Contains(".")) rawAdd = rawAdd.Substring(rawAdd.IndexOf('.') + 1).Trim();
-            BtnAddText = rawAdd;
-            string rawRun = Lang.Msg.ContainsKey("Run") ? Lang.Msg["Run"] : "Run";
-            if (rawRun.Contains(".")) rawRun = rawRun.Substring(rawRun.IndexOf('.') + 1).Trim();
-            if (rawRun.ToUpper().Contains("LANCER")) rawRun = "Tout Lancer";
+            Title = GetTxt("MenuTitle", "EasySave Dashboard").Replace("\n", "").Replace("-", "").Trim();
+            LblMenu = GetTxt("MenuLabel", "MENU");
+            BtnAddText = CleanTranslation(GetTxt("Add", "Ajouter"));
+            BtnRunText = CleanTranslation(GetTxt("Run", "Tout Lancer"));
+            if (BtnRunText.ToUpper().Contains("LANCER")) BtnRunText = "Tout Lancer";
 
-            BtnRunText = rawRun;
+            BtnDeleteAllText = CleanTranslation(GetTxt("DeleteAll", "Tout Supprimer"));
+            BtnSettingsText = "⚙  " + GetTxt("Settings", "Paramètres");
+        }
+        private string GetTxt(string key, string def)
+            => Lang.Msg.ContainsKey(key) ? Lang.Msg[key] : def;
+        private string CleanTranslation(string raw)
+        {
+            if (raw.Contains("."))
+                return raw.Substring(raw.IndexOf('.') + 1).Trim();
+            return raw.Trim();
         }
 
         public void RunAllSave()
@@ -68,7 +74,6 @@ namespace EasySave.WPF.ViewModels
         public void DeleteJob(ModelJob job)
         {
             var result = MessageBox.Show($"Supprimer {job.Name} ?", "Confirmation", MessageBoxButton.YesNo, MessageBoxImage.Warning);
-
             if (result == MessageBoxResult.Yes)
             {
                 int index = _model.myJobs.IndexOf(job);
@@ -79,17 +84,30 @@ namespace EasySave.WPF.ViewModels
                 }
             }
         }
+
         public void CreateJob(string name, string src, string dest, bool isFull)
         {
-            var newJob = new ModelJob
-            {
-                Name = name,
-                Source = src,
-                Target = dest,
-                IsFull = isFull
-            };
+            var newJob = new ModelJob { Name = name, Source = src, Target = dest, IsFull = isFull };
             _model.AddJob(newJob);
             JobsList.Add(newJob);
+        }
+
+        public void DeleteAllJobs()
+        {
+            if (JobsList.Count == 0) return;
+
+            var result = MessageBox.Show(
+                GetTxt("ConfirmDeleteAll", "Supprimer tous les travaux ?"),
+                "Confirmation",
+                MessageBoxButton.YesNo,
+                MessageBoxImage.Warning);
+
+            if (result == MessageBoxResult.Yes)
+            {
+                _model.myJobs.Clear();
+                _model.SaveData();
+                JobsList.Clear();
+            }
         }
     }
 }

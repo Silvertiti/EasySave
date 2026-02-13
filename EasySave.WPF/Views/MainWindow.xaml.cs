@@ -80,5 +80,17 @@ namespace EasySave.WPF
         {
 
         }
+
+        private void BtnSettings_Click(object sender, RoutedEventArgs e)
+        {
+            var settingsWindow = new FenetreParametres();
+            settingsWindow.Owner = this;
+            settingsWindow.ShowDialog();
+        }
+
+        private void OnDeleteAllClick(object sender, RoutedEventArgs e)
+        {
+            _vm.DeleteAllJobs();
+        }
     }
 }
