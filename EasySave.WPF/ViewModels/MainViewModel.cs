@@ -21,8 +21,11 @@ namespace EasySave.WPF.ViewModels
             _model = new SauvegardeModel();
             _model.LoadData();
             JobsList = new ObservableCollection<ModelJob>(_model.myJobs);
+
+            // Initialisation des textes
             Title = GetTxt("MenuTitle", "EasySave Dashboard").Replace("\n", "").Replace("-", "").Trim();
             LblMenu = GetTxt("MenuLabel", "MENU");
+
             BtnAddText = CleanTranslation(GetTxt("Add", "Ajouter"));
             BtnRunText = CleanTranslation(GetTxt("Run", "Tout Lancer"));
             if (BtnRunText.ToUpper().Contains("LANCER")) BtnRunText = "Tout Lancer";
@@ -30,15 +33,16 @@ namespace EasySave.WPF.ViewModels
             BtnDeleteAllText = CleanTranslation(GetTxt("DeleteAll", "Tout Supprimer"));
             BtnSettingsText = "⚙  " + GetTxt("Settings", "Paramètres");
         }
+
         private string GetTxt(string key, string def)
             => Lang.Msg.ContainsKey(key) ? Lang.Msg[key] : def;
+
         private string CleanTranslation(string raw)
         {
             if (raw.Contains("."))
                 return raw.Substring(raw.IndexOf('.') + 1).Trim();
             return raw.Trim();
         }
-
         public void RunAllSave()
         {
             if (JobsList.Count == 0)
@@ -49,26 +53,35 @@ namespace EasySave.WPF.ViewModels
 
             _model.ExecuterSauvegarde((msg) =>
             {
-                if (msg.Contains("Error") || msg.Contains("introuvable"))
+                if (msg.Contains("STOP") || msg.Contains("INTERRUPTION"))
+                {
+                    MessageBox.Show(msg, "Arrêt Logiciel Métier", MessageBoxButton.OK, MessageBoxImage.Warning);
+                }
+                else if (msg.Contains("Error") || msg.Contains("introuvable") || msg.Contains("ERREUR"))
                 {
                     MessageBox.Show(msg, "Erreur", MessageBoxButton.OK, MessageBoxImage.Error);
                 }
             });
-            MessageBox.Show("Terminé / Done", "Info");
         }
-
         public void RunJob(ModelJob job)
         {
             if (job == null) return;
 
             _model.ExecuterUnSeulJob(job, (msg) =>
             {
-                if (msg.Contains("Error") || msg.Contains("introuvable"))
+                if (msg.Contains("STOP") || msg.Contains("INTERRUPTION"))
+                {
+                    MessageBox.Show(msg, "Arrêt Logiciel Métier", MessageBoxButton.OK, MessageBoxImage.Warning);
+                }
+                else if (msg.Contains("Error") || msg.Contains("introuvable") || msg.Contains("ERREUR"))
                 {
                     MessageBox.Show(msg, "Erreur", MessageBoxButton.OK, MessageBoxImage.Error);
                 }
+                else if (msg.Contains("Succès") || msg.Contains("Success"))
+                {
+                    MessageBox.Show($"Le travail '{job.Name}' a été effectué avec succès.", "Terminé", MessageBoxButton.OK, MessageBoxImage.Information);
+                }
             });
-            MessageBox.Show($"Job '{job.Name}' fini.", "Succès");
         }
 
         public void DeleteJob(ModelJob job)

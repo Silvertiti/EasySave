@@ -1,4 +1,5 @@
-﻿using System.Windows;
+﻿using Microsoft.Win32;
+using System.Windows;
 using System.Windows.Input;
 
 namespace EasySave.WPF
@@ -31,6 +32,29 @@ namespace EasySave.WPF
             IsFull = RadioFull.IsChecked == true;
             this.DialogResult = true;
             this.Close();
+        }
+
+        private void BtnBrowseSource_Click(object sender, RoutedEventArgs e)
+        {
+            var dialog = new OpenFolderDialog();
+            dialog.Title = "Sélectionner le dossier source";
+            dialog.Multiselect = false;
+
+            if (dialog.ShowDialog() == true)
+            {
+                TxtSource.Text = dialog.FolderName;
+            }
+        }
+        private void BtnBrowseTarget_Click(object sender, RoutedEventArgs e)
+        {
+            var dialog = new OpenFolderDialog();
+            dialog.Title = "Sélectionner le dossier cible";
+            dialog.Multiselect = false;
+
+            if (dialog.ShowDialog() == true)
+            {
+                TxtTarget.Text = dialog.FolderName;
+            }
         }
 
         private void BtnCancel_Click(object sender, RoutedEventArgs e)

@@ -27,6 +27,7 @@ namespace EasySave.Core.Models
             string json = JsonConvert.SerializeObject(myJobs, Formatting.Indented);
             File.WriteAllText(configFile, json);
         }
+
         public void AddJob(ModelJob newJob)
         {
             myJobs.Add(newJob);
@@ -42,6 +43,37 @@ namespace EasySave.Core.Models
             }
         }
 
+        private bool IsBusinessSoftRunning()
+        {
+            try
+            {
+                var settings = Settings.Load();
+                string targetName = settings.BusinessSoftware;
+
+                if (string.IsNullOrEmpty(targetName)) return false;
+
+                if (targetName.ToLower().EndsWith(".exe"))
+                {
+                    targetName = targetName.Substring(0, targetName.Length - 4);
+                }
+
+                Process[] processes = Process.GetProcesses();
+                foreach (var p in processes)
+                {
+                    if (string.Equals(p.ProcessName, targetName, StringComparison.OrdinalIgnoreCase))
+                    {
+                        return true;
+                    }
+                }
+            }
+            catch
+            {
+                return false;
+            }
+
+            return false;
+        }
+
         public void ExecuterSauvegarde(Action<string> uiCallback)
         {
             foreach (var job in myJobs)
@@ -52,15 +84,19 @@ namespace EasySave.Core.Models
 
         public void ExecuterUnSeulJob(ModelJob job, Action<string> uiCallback)
         {
+            if (IsBusinessSoftRunning())
+            {
+                uiCallback($"STOP : Logiciel métier détecté ({Settings.Load().BusinessSoftware}). Sauvegarde annulée.");
+                return;
+            }
+
             try
             {
-                string startMsg = Lang.Msg.ContainsKey("Start") ? Lang.Msg["Start"] : "Start: ";
-                uiCallback(startMsg + job.Name);
+                uiCallback("Lancement : " + job.Name);
 
                 if (!Directory.Exists(job.Source))
                 {
-                    string missingMsg = Lang.Msg.ContainsKey("SourceMissing") ? Lang.Msg["SourceMissing"] : "Source not found";
-                    uiCallback(missingMsg + " -> " + job.Source);
+                    uiCallback("ERREUR : Source introuvable -> " + job.Source);
                     return;
                 }
 
@@ -76,9 +112,17 @@ namespace EasySave.Core.Models
 
                 foreach (string file in files)
                 {
+                    if (IsBusinessSoftRunning())
+                    {
+                        uiCallback("INTERRUPTION : Logiciel métier détecté pendant l'exécution.");
+                        LogManager.SaveLog(job.Name, "STOP_METIER", "STOP_METIER", 0, 0);
+                        break;
+                    }
+
                     string relatif = file.Replace(job.Source, "").TrimStart('\\');
                     string dest = Path.Combine(job.Target, relatif);
                     long fileSize = new FileInfo(file).Length;
+
                     if (!job.IsFull && File.Exists(dest))
                     {
                         if (File.GetLastWriteTime(file) <= File.GetLastWriteTime(dest))
@@ -89,6 +133,7 @@ namespace EasySave.Core.Models
                             continue;
                         }
                     }
+
                     string? dirDest = Path.GetDirectoryName(dest);
                     if (!string.IsNullOrEmpty(dirDest) && !Directory.Exists(dirDest))
                         Directory.CreateDirectory(dirDest);
@@ -106,26 +151,20 @@ namespace EasySave.Core.Models
                     {
                         sw.Stop();
                         LogManager.SaveLog(job.Name, file, dest, fileSize, -1);
-
-                        string errMsg = Lang.Msg.ContainsKey("Error") ? Lang.Msg["Error"] : "Error: ";
-                        uiCallback(errMsg + ex.Message);
+                        uiCallback("Erreur copie : " + ex.Message);
                     }
 
                     filesLeft--;
                     sizeLeft -= fileSize;
-
-                    string copyMsg = Lang.Msg.ContainsKey("Copy") ? Lang.Msg["Copy"] : "Copy: ";
-                    uiCallback(copyMsg + relatif);
+                    uiCallback("Copié : " + relatif);
                 }
 
                 UpdateEtat(job.Name, "", "", "INACTIF", totalFiles, totalSize, 0, 0);
-
-                string successMsg = Lang.Msg.ContainsKey("Success") ? Lang.Msg["Success"] : "Success: ";
-                uiCallback(successMsg + job.Name);
+                uiCallback("Succès : " + job.Name);
             }
             catch (Exception ex)
             {
-                uiCallback("CRITICAL ERROR: " + ex.Message);
+                uiCallback("ERREUR CRITIQUE : " + ex.Message);
             }
         }
 

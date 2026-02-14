@@ -1,7 +1,7 @@
 ﻿<Window x:Class="EasySave.WPF.FenetreAjouterJob"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="Nouveau Travail" Height="450" Width="500"
+        Title="Nouveau Travail" Height="500" Width="500"
         WindowStartupLocation="CenterOwner"
         WindowStyle="None" ResizeMode="NoResize"
         AllowsTransparency="True" Background="Transparent"
@@ -55,10 +55,7 @@
 
             <Grid Grid.Row="0" Margin="0,0,0,25">
                 <TextBlock Text="Nouveau Travail" Foreground="{StaticResource TextPrimary}" FontSize="20" FontWeight="SemiBold" VerticalAlignment="Center"/>
-
-                <Button Click="BtnHeaderClose_Click" Width="30" Height="30" 
-                        HorizontalAlignment="Right" VerticalAlignment="Top"
-                        Background="Transparent" BorderThickness="0" Cursor="Hand">
+                <Button Click="BtnHeaderClose_Click" Width="30" Height="30" HorizontalAlignment="Right" VerticalAlignment="Top" Background="Transparent" BorderThickness="0" Cursor="Hand">
                     <Button.Template>
                         <ControlTemplate TargetType="Button">
                             <Border x:Name="border" Background="{TemplateBinding Background}" CornerRadius="4">
@@ -80,11 +77,45 @@
                 <TextBox x:Name="TxtName"/>
 
                 <TextBlock Text="Dossier Source" Foreground="{StaticResource TextSecondary}" FontSize="12" Margin="0,15,0,6"/>
-                <TextBox x:Name="TxtSource"/>
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+
+                    <TextBox x:Name="TxtSource" Grid.Column="0"/>
+
+                    <Button Content="..." Click="BtnBrowseSource_Click" Grid.Column="1" Width="40" Height="35" Margin="5,0,0,0" Background="#333" Foreground="White" BorderThickness="0" Cursor="Hand">
+                        <Button.Template>
+                            <ControlTemplate TargetType="Button">
+                                <Border Background="{TemplateBinding Background}" CornerRadius="4">
+                                    <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                </Border>
+                            </ControlTemplate>
+                        </Button.Template>
+                    </Button>
+                </Grid>
                 <TextBlock Text="Chemin complet (ex: C:\Dossier\Source)" Foreground="#555" FontSize="10" Margin="0,4,0,0" FontStyle="Italic"/>
 
                 <TextBlock Text="Dossier Cible" Foreground="{StaticResource TextSecondary}" FontSize="12" Margin="0,15,0,6"/>
-                <TextBox x:Name="TxtTarget"/>
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+
+                    <TextBox x:Name="TxtTarget" Grid.Column="0"/>
+
+                    <Button Content="..." Click="BtnBrowseTarget_Click" Grid.Column="1" Width="40" Height="35" Margin="5,0,0,0" Background="#333" Foreground="White" BorderThickness="0" Cursor="Hand">
+                        <Button.Template>
+                            <ControlTemplate TargetType="Button">
+                                <Border Background="{TemplateBinding Background}" CornerRadius="4">
+                                    <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                </Border>
+                            </ControlTemplate>
+                        </Button.Template>
+                    </Button>
+                </Grid>
 
                 <TextBlock Text="Type de sauvegarde" Foreground="{StaticResource TextSecondary}" FontSize="12" Margin="0,20,0,10"/>
                 <StackPanel Orientation="Horizontal">
@@ -94,8 +125,7 @@
             </StackPanel>
 
             <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,30,0,0">
-                <Button Content="Annuler" IsCancel="True" Click="BtnCancel_Click"
-                        Width="90" Height="35" Background="Transparent" Foreground="{StaticResource TextSecondary}" BorderThickness="0" Margin="0,0,10,0" Cursor="Hand">
+                <Button Content="Annuler" IsCancel="True" Click="BtnCancel_Click" Width="90" Height="35" Background="Transparent" Foreground="{StaticResource TextSecondary}" BorderThickness="0" Margin="0,0,10,0" Cursor="Hand">
                     <Button.Template>
                         <ControlTemplate TargetType="Button">
                             <Border Background="Transparent">
@@ -110,8 +140,7 @@
                     </Button.Template>
                 </Button>
 
-                <Button Content="Enregistrer" IsDefault="True" Click="BtnSave_Click"
-                        Width="110" Height="35" Background="{StaticResource EmeraldColor}" Foreground="White" FontWeight="SemiBold" BorderThickness="0" Cursor="Hand">
+                <Button Content="Enregistrer" IsDefault="True" Click="BtnSave_Click" Width="110" Height="35" Background="{StaticResource EmeraldColor}" Foreground="White" FontWeight="SemiBold" BorderThickness="0" Cursor="Hand">
                     <Button.Template>
                         <ControlTemplate TargetType="Button">
                             <Border x:Name="border" Background="{TemplateBinding Background}" CornerRadius="4">
