@@ -12,20 +12,18 @@ namespace EasySave.Controller
         public void Start(string[] args)
         {
             model.LoadData();
-
             if (args.Length > 0)
             {
-                Lang.Init("en");
                 model.ExecuterSauvegarde(Console.WriteLine);
                 return;
             }
-
             view.ChoixLangue();
             var k = Console.ReadKey();
             Console.WriteLine();
-            Lang.Init(k.KeyChar == '1' ? "en" : "fr");
+            if (Lang.Msg == null || Lang.Msg.Count == 0) Lang.Init(k.KeyChar == '1' ? "en" : "fr");
+            else Lang.Init(k.KeyChar == '1' ? "en" : "fr");
 
-            Console.Clear(); 
+            Console.Clear();
             view.AfficherLogo();
 
             bool continuer = true;
@@ -40,7 +38,8 @@ namespace EasySave.Controller
                     case "2": Ajouter(); break;
                     case "3":
                         model.ExecuterSauvegarde(view.AfficherMessage);
-                        view.AfficherMessage(Lang.Msg["PressKey"]);
+
+                        view.AfficherMessage("\nAppuyez sur une touche...");
                         Console.ReadKey();
                         Console.Clear();
                         view.AfficherLogo();
@@ -53,32 +52,41 @@ namespace EasySave.Controller
         void Lister()
         {
             view.AfficherListe(model.myJobs);
-
-            view.AfficherMessage(Lang.Msg["DeletePrompt"]);
+            view.AfficherMessage("\n(Entrez un numéro pour supprimer, ou 0 pour retour)");
             string choix = view.LireSaisie();
-            if (int.TryParse(choix, out int index) && index > 0)
+
+            if (int.TryParse(choix, out int index) && index > 0 && index <= model.myJobs.Count)
             {
                 model.DeleteJob(index - 1);
-                view.AfficherMessage(Lang.Msg["Deleted"]);
+                view.AfficherMessage("Travail supprimé !");
             }
         }
 
         void Ajouter()
         {
-            if (model.myJobs.Count >= 5)
+
+            view.AfficherMessage("Nom du travail :");
+            string nom = view.LireSaisie();
+
+            view.AfficherMessage("Source :");
+            string src = view.LireSaisie().Replace("\"", "").Trim();
+
+            view.AfficherMessage("Cible :");
+            string dest = view.LireSaisie().Replace("\"", "").Trim();
+
+            view.AfficherMessage("Type (1=Complet, 2=Différentiel) :");
+            string type = view.LireSaisie();
+            var newJob = new ModelJob
             {
-                view.AfficherMessage(Lang.Msg["MaxJobs"]);
-                return;
-            }
+                Name = nom,
+                Source = src,
+                Target = dest,
+                IsFull = (type == "1")
+            };
 
+            model.AddJob(newJob);
 
-            view.AfficherMessage(Lang.Msg["EnterName"]); string nom = view.LireSaisie();
-            view.AfficherMessage(Lang.Msg["EnterSource"]); string src = view.LireSaisie().Replace("\"", "").Trim();
-            view.AfficherMessage(Lang.Msg["EnterTarget"]); string dest = view.LireSaisie().Replace("\"", "").Trim();
-            view.AfficherMessage(Lang.Msg["EnterType"]); string type = view.LireSaisie();
-
-            model.AddJob(nom, src, dest, type == "1");
-            view.AfficherMessage(Lang.Msg["Saved"]);
+            view.AfficherMessage("Sauvegardé avec succès !");
         }
     }
 }
