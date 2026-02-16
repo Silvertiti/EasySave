@@ -2,13 +2,16 @@
 using System.Collections.ObjectModel;
 using System.Windows;
 using System.Linq;
+using EasySave.Core.Controller;
+using CommunityToolkit.Mvvm.Input;
+using CommunityToolkit.Mvvm.ComponentModel;
 
 namespace EasySave.WPF.ViewModels
 {
-    public class MainViewModel
+    public partial class MainViewModel : ObservableObject
     {
         public ObservableCollection<ModelJob> JobsList { get; set; }
-        public SauvegardeModel _model;
+        public SauvegardeController _model;
         public string Title { get; set; }
         public string LblMenu { get; set; }
         public string BtnAddText { get; set; }
@@ -18,11 +21,8 @@ namespace EasySave.WPF.ViewModels
 
         public MainViewModel()
         {
-            _model = new SauvegardeModel();
-            _model.LoadData();
+            _model = new SauvegardeController();
             JobsList = new ObservableCollection<ModelJob>(_model.myJobs);
-
-            // Initialisation des textes
             Title = GetTxt("MenuTitle", "EasySave Dashboard").Replace("\n", "").Replace("-", "").Trim();
             LblMenu = GetTxt("MenuLabel", "MENU");
 
@@ -117,10 +117,16 @@ namespace EasySave.WPF.ViewModels
 
             if (result == MessageBoxResult.Yes)
             {
-                _model.myJobs.Clear();
-                _model.SaveData();
+                _model.DeleteAllJobs();
                 JobsList.Clear();
             }
+        }
+
+        [RelayCommand]
+        public void OpenSettings()
+        {
+            var settingsWindow = new FenetreParametres();
+            settingsWindow.ShowDialog();
         }
     }
 }

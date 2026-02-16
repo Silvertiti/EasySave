@@ -1,4 +1,5 @@
 ﻿using EasySave.Core.Models;
+using EasySave.Core.Services;
 using Microsoft.Win32;
 using System.Windows;
 using System.Windows.Input;
@@ -7,7 +8,7 @@ namespace EasySave.WPF
 {
     public partial class FenetreParametres : Window
     {
-        private Settings _settings;
+        private SettingsManager settingsManager = new SettingsManager();
 
         public FenetreParametres()
         {
@@ -17,7 +18,7 @@ namespace EasySave.WPF
 
         private void LoadSettings()
         {
-            _settings = Settings.Load();
+            var _settings = settingsManager.GetSettings();
 
             TxtExtensions.Text = _settings.ExtensionsToEncrypt;
             TxtBusinessSoft.Text = _settings.BusinessSoftware;
@@ -29,12 +30,14 @@ namespace EasySave.WPF
 
         private void BtnSave_Click(object sender, RoutedEventArgs e)
         {
+            var _settings = settingsManager.GetSettings();
+
             _settings.ExtensionsToEncrypt = TxtExtensions.Text.Trim();
             _settings.BusinessSoftware = TxtBusinessSoft.Text.Trim();
             _settings.CryptoSoftPath = TxtCryptoPath.Text.Trim();
             _settings.LogFormat = (RadioXml.IsChecked == true) ? "xml" : "json";
 
-            _settings.Save();
+            settingsManager.Save(_settings);
 
             MessageBox.Show("Paramètres sauvegardés avec succès.", "Succès", MessageBoxButton.OK, MessageBoxImage.Information);
             this.Close();

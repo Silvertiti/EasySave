@@ -4,60 +4,34 @@ using System.IO;
 using System.Diagnostics;
 using System.Linq;
 using Newtonsoft.Json;
-using EasyLog.Core.Logs;
+using EasySave.Core.Models;
+using EasySave.Core.Services;
 
-namespace EasySave.Core.Models
+namespace EasySave.Core.Controller
 {
-    public class SauvegardeModel
+    public class SauvegardeController
     {
-        public List<ModelJob> myJobs = new List<ModelJob>();
-        private string configFile = "jobs.json";
+        public List<ModelJob> myJobs;
+        SettingsManager settingsManager = new SettingsManager();
+        BusinessSoftwareService businessSoftwareService = new BusinessSoftwareService();
+        JobManager jobManager = new JobManager();
         private string stateFile = "state.json";
 
-        public void LoadData()
-        {
-            if (File.Exists(configFile))
-            {
-                string json = File.ReadAllText(configFile);
-                myJobs = JsonConvert.DeserializeObject<List<ModelJob>>(json) ?? new List<ModelJob>();
-            }
-        }
-
-        public void SaveData()
-        {
-            string json = JsonConvert.SerializeObject(myJobs, Formatting.Indented);
-            File.WriteAllText(configFile, json);
-        }
-
-        public void AddJob(ModelJob newJob) { myJobs.Add(newJob); SaveData(); }
+        public SauvegardeController() { myJobs = jobManager.LoadData(); }
+        public void AddJob(ModelJob newJob) { myJobs.Add(newJob); jobManager.SaveData(myJobs); }
 
         public void DeleteJob(int index)
         {
-            if (index >= 0 && index < myJobs.Count) { myJobs.RemoveAt(index); SaveData(); }
+            if (index >= 0 && index < myJobs.Count) { myJobs.RemoveAt(index); jobManager.SaveData(myJobs); }
         }
-        private bool IsBusinessSoftRunning()
-        {
-            try
-            {
-                var settings = Settings.Load();
-                string targetName = settings.BusinessSoftware;
-                if (string.IsNullOrEmpty(targetName)) return false;
-                if (targetName.ToLower().EndsWith(".exe")) targetName = targetName.Substring(0, targetName.Length - 4);
 
-                Process[] processes = Process.GetProcesses();
-                foreach (var p in processes)
-                {
-                    if (string.Equals(p.ProcessName, targetName, StringComparison.OrdinalIgnoreCase)) return true;
-                }
-            }
-            catch { return false; }
-            return false;
-        }
+        public void DeleteAllJobs() { myJobs.Clear(); jobManager.SaveData(myJobs); }
+
         private double ExecuteCryptoSoft(string sourceFilePath)
         {
             try
             {
-                var settings = Settings.Load();
+                var settings = settingsManager.GetSettings();
                 if (string.IsNullOrEmpty(settings.CryptoSoftPath) || !File.Exists(settings.CryptoSoftPath))
                     return -1;
 
@@ -90,9 +64,10 @@ namespace EasySave.Core.Models
 
         public void ExecuterUnSeulJob(ModelJob job, Action<string> uiCallback)
         {
-            if (IsBusinessSoftRunning())
+            var settings = settingsManager.GetSettings();
+            if (businessSoftwareService.IsBusinessSoftRunning())
             {
-                uiCallback($"STOP : Logiciel métier détecté ({Settings.Load().BusinessSoftware}).");
+                uiCallback($"STOP : Logiciel métier détecté ({settings.BusinessSoftware}).");
                 return;
             }
 
@@ -109,12 +84,11 @@ namespace EasySave.Core.Models
                 int filesLeft = totalFiles;
                 long sizeLeft = totalSize;
                 UpdateEtat(job.Name, job.Source, job.Target, "ACTIF", totalFiles, totalSize, filesLeft, sizeLeft);
-                var settings = Settings.Load();
                 List<string> extensionsToEncrypt = settings.ExtensionsToEncrypt.Split(',').Select(e => e.Trim().ToLower()).ToList();
 
                 foreach (string file in files)
                 {
-                    if (IsBusinessSoftRunning())
+                    if (businessSoftwareService.IsBusinessSoftRunning())
                     {
                         uiCallback("INTERRUPTION : Logiciel métier détecté.");
                         LogManager.SaveLog(job.Name, "STOP_METIER", "STOP_METIER", 0, 0, 0);
