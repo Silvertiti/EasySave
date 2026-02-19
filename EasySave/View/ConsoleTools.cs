@@ -56,22 +56,22 @@ namespace EasySave.View
 
         public void AfficherMenu()
         {
-            Console.WriteLine(Lang.Msg["MenuTitle"]);
-            Console.WriteLine(Lang.Msg["List"]);
-            Console.WriteLine(Lang.Msg["Add"]);
-            Console.WriteLine(Lang.Msg["Run"]);
-            Console.WriteLine(Lang.Msg["Quit"]);
-            Console.WriteLine(Lang.Msg["Settings"]);
-            Console.Write(Lang.Msg["Choice"]);
+            Console.WriteLine(LangConsole.Msg["MenuTitle"]);
+            Console.WriteLine(LangConsole.Msg["List"]);
+            Console.WriteLine(LangConsole.Msg["Add"]);
+            Console.WriteLine(LangConsole.Msg["Run"]);
+            Console.WriteLine(LangConsole.Msg["Quit"]);
+            Console.WriteLine(LangConsole.Msg["Settings"]);
+            Console.Write(LangConsole.Msg["Choice"]);
         }
 
         public void AfficherSettings(bool useXml)
         {
-            Console.WriteLine(Lang.Msg["MenuTitle"]);
-            Console.WriteLine(Lang.Msg["CurrentLog"] + (useXml ? "XML" : "JSON"));
-            Console.WriteLine(Lang.Msg["ChangeLog"]);
-            Console.WriteLine(Lang.Msg["Back"]);
-            Console.Write(Lang.Msg["Choice"]);
+            Console.WriteLine(LangConsole.Msg["MenuTitle"]);
+            Console.WriteLine(LangConsole.Msg["CurrentLog"] + (useXml ? "XML" : "JSON"));
+            Console.WriteLine(LangConsole.Msg["ChangeLog"]);
+            Console.WriteLine(LangConsole.Msg["Back"]);
+            Console.Write(LangConsole.Msg["Choice"]);
         }
 
         public string LireSaisie()
@@ -86,10 +86,10 @@ namespace EasySave.View
 
         public void AfficherListe(List<ModelJob> jobs)
         {
-            Console.WriteLine(Lang.Msg["MenuTitle"]);
+            Console.WriteLine(LangConsole.Msg["MenuTitle"]);
             if (jobs.Count == 0)
             {
-                Console.WriteLine(Lang.Msg["NoJob"]);
+                Console.WriteLine(LangConsole.Msg["NoJob"]);
                 return;
             }
             for (int i = 0; i < jobs.Count; i++)

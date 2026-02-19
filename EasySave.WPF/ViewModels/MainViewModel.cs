@@ -35,7 +35,7 @@ namespace EasySave.WPF.ViewModels
         }
 
         private string GetTxt(string key, string def)
-            => Lang.Msg.ContainsKey(key) ? Lang.Msg[key] : def;
+            => LangGUI.Msg.ContainsKey(key) ? LangGUI.Msg[key] : def;
 
         private string CleanTranslation(string raw)
         {

@@ -33,7 +33,7 @@ namespace EasySave.WPF.Views
 
         private void StartApplication(string culture)
         {
-            Lang.Init(culture);
+            LangGUI.Init(culture);
             MainWindow main = new MainWindow();
             main.Show();
             this.Close();

@@ -20,8 +20,8 @@ namespace EasySave.Controller
             consoleTools.ChoixLangue();
             var k = Console.ReadKey();
             Console.WriteLine();
-            if (Lang.Msg == null || Lang.Msg.Count == 0) Lang.Init(k.KeyChar == '1' ? "en" : "fr");
-            else Lang.Init(k.KeyChar == '1' ? "en" : "fr");
+            if (LangConsole.Msg == null || LangConsole.Msg.Count == 0) LangConsole.Init(k.KeyChar == '1' ? "en" : "fr");
+            else LangConsole.Init(k.KeyChar == '1' ? "en" : "fr");
 
             Console.Clear();
             consoleTools.AfficherLogo();

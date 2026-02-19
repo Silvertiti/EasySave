@@ -1,0 +1,20 @@
+{
+  "en": {
+    "MenuTitle": "EasySave Dashboard",
+    "MenuLabel": "MENU",
+    "Add": "Add a job",
+    "Run": "Run all",
+    "DeleteAll": "Delete all",
+    "Settings": "Settings",
+    "ConfirmDeleteAll": "Delete all jobs?"
+  },
+  "fr": {
+    "MenuTitle": "Tableau de bord EasySave",
+    "MenuLabel": "MENU",
+    "Add": "Ajouter un travail",
+    "Run": "Tout lancer",
+    "DeleteAll": "Tout supprimer",
+    "Settings": "Paramètres",
+    "ConfirmDeleteAll": "Supprimer tous les travaux ?"
+  }
+}
