@@ -11,8 +11,6 @@ namespace EasySave.Core.Models
         public static void Init(string culture)
         {
             Msg.Clear();
-            Console.OutputEncoding = Encoding.UTF8;
-
             if (culture == "en")
             {
                 Msg["MenuTitle"] = "\n--- EASY SAVE MENU ---";

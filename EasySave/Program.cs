@@ -6,7 +6,8 @@ namespace EasySave
     {
         static void Main(string[] args)
         {
-            SauvegardeController controller = new SauvegardeController();
+            Console.OutputEncoding = System.Text.Encoding.UTF8;
+            SauvegardeView controller = new SauvegardeView();
             controller.Start(args);
         }
     }

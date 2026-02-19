@@ -4,7 +4,7 @@ using EasySave.Core.Models;
 
 namespace EasySave.View
 {
-    public class ConsoleView
+    public class ConsoleTools
     {
         public void AfficherLogo()
         {
