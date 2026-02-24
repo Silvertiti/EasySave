@@ -49,21 +49,5 @@ namespace EasySave.WPF
 
         // ── Serveur ──────────────────────────────────────────────────────────────────
         private void OnToggleServerClick(object sender, RoutedEventArgs e) => _vm.ToggleServer();
-
-        // ── Client distant ────────────────────────────────────────────────────────────
-        private string GetHost() => TxtRemoteHost.Text.Trim();
-        private int GetPort() => int.TryParse(TxtRemotePort.Text, out int p) ? p : BackupServer.Port;
-
-        private void ShowResponse(string response) => TxtClientResponse.Text = response;
-
-        private void OnClientStatus(object sender, RoutedEventArgs e)  => ShowResponse(_vm.SendClientCommand(GetHost(), GetPort(), "STATUS"));
-        private void OnClientList(object sender, RoutedEventArgs e)    => ShowResponse(_vm.SendClientCommand(GetHost(), GetPort(), "LIST"));
-        private void OnClientRunAll(object sender, RoutedEventArgs e)  => ShowResponse(_vm.SendClientCommand(GetHost(), GetPort(), "RUN_ALL"));
-        private void OnClientRunJob(object sender, RoutedEventArgs e)
-        {
-            string name = TxtJobName.Text.Trim();
-            if (!string.IsNullOrEmpty(name))
-                ShowResponse(_vm.SendClientCommand(GetHost(), GetPort(), $"RUN:{name}"));
-        }
     }
 }
