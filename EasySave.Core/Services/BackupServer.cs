@@ -128,7 +128,7 @@ function l(t){var p=document.getElementById('log');p.textContent+=t+'\n';p.scrol
                     // Remplir toutes les cases restantes
                     for (int i = lastBlock + 1; i < 10; i++)
                         writer.Write($"<script>s({i});</script>");
-                    writer.Write("<script>document.querySelector('h2').textContent='Termine !';</script></body></html>");
+                    writer.Write("<script>document.querySelector('h2').textContent='Termine !';var a=document.createElement('a');a.href='/';a.textContent='X';a.style='display:inline-block;margin-top:20px;color:#f55;font-size:24px;text-decoration:none;border:1px solid #f55;padding:8px 16px;border-radius:6px';document.body.appendChild(a);</script></body></html>");
                     writer.Flush();
                 }
                 else if (path == "/list")
