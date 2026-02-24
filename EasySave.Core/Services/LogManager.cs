@@ -8,9 +8,10 @@ namespace EasySave.Core.Services
     public class LogManager
     {
         private static string logFolder = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "logs");
+        private static SettingsManager _settingsManager = new SettingsManager();
         public static void SaveLog(string jobName, string source, string target, long size, double transferTime, double encryptionTime)
         {
-            var settings = new SettingsManager().GetSettings();//C MOCHE A FIX
+            var settings = _settingsManager.GetSettings();
             string format = settings.LogFormat.ToLower();
 
             Directory.CreateDirectory(logFolder);

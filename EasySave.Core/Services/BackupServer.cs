@@ -35,11 +35,20 @@ namespace EasySave.Core.Services
 
         private void Listen()
         {
-            _listener = new TcpListener(IPAddress.Any, Port);
-            _listener.Start();
+            try
+            {
+                _listener = new TcpListener(IPAddress.Any, Port);
+                _listener.Start();
+            }
+            catch (Exception ex)
+            {
+                Log($"Erreur : impossible de démarrer le serveur ({ex.Message}). Port déjà utilisé ?");
+                IsRunning = false;
+                return;
+            }
             while (IsRunning)
             {
-                try { Task.Run(() => Handle(_listener.AcceptTcpClient())); }
+                try { Handle(_listener.AcceptTcpClient()); }
                 catch { break; }
             }
         }
