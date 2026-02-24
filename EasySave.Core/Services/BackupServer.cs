@@ -23,7 +23,7 @@ namespace EasySave.Core.Services
             _controller = controller;
             IsRunning = true;
             Task.Run(Listen);
-            Log($"Serveur démarré sur le port {Port}");
+            Log($"Serveur HTTP démarré sur le port {Port}");
         }
 
         public void Stop()
@@ -42,7 +42,7 @@ namespace EasySave.Core.Services
             }
             catch (Exception ex)
             {
-                Log($"Erreur : impossible de démarrer le serveur ({ex.Message}). Port déjà utilisé ?");
+                Log($"Erreur : impossible de démarrer ({ex.Message}). Port déjà utilisé ?");
                 IsRunning = false;
                 return;
             }
@@ -57,16 +57,34 @@ namespace EasySave.Core.Services
         {
             try
             {
-                var enc = new UTF8Encoding(false);
-                var reader = new StreamReader(tcp.GetStream(), enc);
-                var writer = new StreamWriter(tcp.GetStream(), enc) { AutoFlush = true };
+                var stream = tcp.GetStream();
+                var reader = new StreamReader(stream, Encoding.UTF8);
 
-                string cmd = reader.ReadLine()?.Trim() ?? "";
-                Log($"Commande reçue : {cmd}");
+                // Lire la requête HTTP (GET /path HTTP/1.1)
+                string? requestLine = reader.ReadLine();
+                if (requestLine == null) return;
 
-                if (cmd == "RUN_ALL")
+                // Lire les headers (on les ignore)
+                string? header;
+                while (!string.IsNullOrEmpty(header = reader.ReadLine())) { }
+
+                // Extraire le chemin
+                string path = "/";
+                var parts = requestLine.Split(' ');
+                if (parts.Length >= 2) path = parts[1].ToLower();
+
+                var writer = new StreamWriter(stream, new UTF8Encoding(false)) { AutoFlush = true };
+
+                // Headers HTTP
+                writer.WriteLine("HTTP/1.1 200 OK");
+                writer.WriteLine("Access-Control-Allow-Origin: *");
+                writer.WriteLine("Connection: close");
+
+                if (path == "/run")
                 {
-                    // Stream chaque message de progression directement au client
+                    writer.WriteLine("Content-Type: text/plain; charset=utf-8");
+                    writer.WriteLine();
+                    Log("Commande RUN_ALL reçue");
                     _controller?.ExecuterSauvegarde(msg =>
                     {
                         writer.WriteLine(msg);
@@ -74,23 +92,41 @@ namespace EasySave.Core.Services
                     });
                     writer.WriteLine("=== TERMINÉ ===");
                 }
-                else if (cmd == "STATUS")
+                else if (path == "/list")
                 {
-                    writer.WriteLine(File.Exists("state.json")
-                        ? File.ReadAllText("state.json")
-                        : "Aucune sauvegarde en cours.");
-                }
-                else if (cmd == "LIST")
-                {
+                    writer.WriteLine("Content-Type: text/plain; charset=utf-8");
+                    writer.WriteLine();
                     if (_controller == null || _controller.myJobs.Count == 0)
                         writer.WriteLine("Aucun job configuré.");
                     else
                         foreach (var j in _controller.myJobs)
                             writer.WriteLine($"{j.Name} | {j.Source} -> {j.Target}");
                 }
+                else if (path == "/status")
+                {
+                    writer.WriteLine("Content-Type: text/plain; charset=utf-8");
+                    writer.WriteLine();
+                    writer.WriteLine(File.Exists("state.json")
+                        ? File.ReadAllText("state.json")
+                        : "Aucune sauvegarde en cours.");
+                }
                 else
                 {
-                    writer.WriteLine($"Commande inconnue : {cmd}");
+                    // Page d'accueil HTML
+                    string html = $@"<!DOCTYPE html>
+<html><head><meta charset=""utf-8""><title>EasySave</title>
+<style>body{{font-family:Arial;background:#111;color:#eee;text-align:center;padding-top:60px}}a{{display:block;color:#4af;font-size:18px;margin:10px auto;width:300px;padding:10px;border:1px solid #4af;text-decoration:none}}a:hover{{background:#223}}</style>
+</head><body>
+<h2>EasySave Server</h2>
+<p>{_controller?.myJobs.Count ?? 0} job(s)</p>
+<a href=""/run"">Lancer toutes les sauvegardes</a>
+<a href=""/list"">Lister les jobs</a>
+<a href=""/status"">Statut</a>
+</body></html>";
+                    writer.WriteLine("Content-Type: text/html; charset=utf-8");
+                    writer.WriteLine($"Content-Length: {Encoding.UTF8.GetByteCount(html)}");
+                    writer.WriteLine();
+                    writer.Write(html);
                 }
             }
             catch (Exception ex) { Log($"Erreur: {ex.Message}"); }
