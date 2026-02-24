@@ -23,22 +23,18 @@ namespace EasySave.Controller
             Console.Clear();
             consoleTools.AfficherLogo();
 
-            // Démarrage automatique du serveur TCP en arrière-plan
+            // Configuration des logs du serveur
             server.OnLog += msg =>
             {
                 Console.ForegroundColor = ConsoleColor.DarkCyan;
-                Console.WriteLine($"\n[Serveur] {msg}");
+                Console.WriteLine($"\n[Server] {msg}");
                 Console.ResetColor();
             };
-            server.Start(controller);
-            Console.ForegroundColor = ConsoleColor.Cyan;
-            Console.WriteLine($"[Serveur TCP démarré sur le port {BackupServer.Port} — en attente de connexions distantes]");
-            Console.ResetColor();
 
             bool continuer = true;
             while (continuer)
             {
-                consoleTools.AfficherMenu();
+                consoleTools.AfficherMenu(server.IsRunning);
                 switch (consoleTools.LireSaisie())
                 {
                     case "1": Lister(); break;
@@ -49,10 +45,37 @@ namespace EasySave.Controller
                         Console.Clear(); consoleTools.AfficherLogo();
                         break;
                     case "4": continuer = false; break;
+                    case "5":
+                        if (server.IsRunning) server.Stop();
+                        else server.Start(controller);
+                        Console.Clear(); consoleTools.AfficherLogo();
+                        break;
+                    case "6": Settings(); break;
                 }
             }
 
             server.Stop();
+        }
+
+        void Settings()
+        {
+            var settingsManager = new SettingsManager();
+            bool inSettings = true;
+            while (inSettings)
+            {
+                var settings = settingsManager.GetSettings();
+                consoleTools.AfficherSettings(settings.LogFormat.ToLower() == "xml");
+                switch (consoleTools.LireSaisie())
+                {
+                    case "1":
+                        settings.LogFormat = (settings.LogFormat.ToLower() == "xml") ? "json" : "xml";
+                        settingsManager.SaveSettings(settings);
+                        break;
+                    case "2": inSettings = false; break;
+                }
+                Console.Clear();
+                consoleTools.AfficherLogo();
+            }
         }
 
         void Lister()

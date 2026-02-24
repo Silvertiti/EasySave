@@ -14,15 +14,20 @@ namespace EasySave.Core.Services
 
         private static string settingsFile = "settings.json";
 
-        public Settings GetSettings() => settings ??= Load();
+        public SettingsManager()
+        {
+            settings = Load();
+        }
+
+        public Settings GetSettings() => settings;
 
         private Settings Load()
         {
-            if (File.Exists(settingsFile))
+            if (System.IO.File.Exists(settingsFile))
             {
                 try
                 {
-                    string json = File.ReadAllText(settingsFile);
+                    string json = System.IO.File.ReadAllText(settingsFile);
                     return JsonConvert.DeserializeObject<Settings>(json) ?? new Settings();
                 }
                 catch { return new Settings(); }
@@ -30,10 +35,12 @@ namespace EasySave.Core.Services
             return new Settings();
         }
 
-        public void Save(Settings s)
+        public void SaveSettings(Settings s)
         {
+            settings = s;
             string json = JsonConvert.SerializeObject(s, Formatting.Indented);
-            File.WriteAllText(settingsFile, json);
+            System.IO.File.WriteAllText(settingsFile, json);
         }
+
     }
 }

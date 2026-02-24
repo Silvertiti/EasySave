@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using EasySave.Core.Models;
+using EasySave.Core.Services;
 
 namespace EasySave.View
 {
@@ -61,16 +62,21 @@ namespace EasySave.View
             Console.WriteLine(LangConsole.Msg["Add"]);
             Console.WriteLine(LangConsole.Msg["Run"]);
             Console.WriteLine(LangConsole.Msg["Quit"]);
-            Console.WriteLine(LangConsole.Msg["Settings"]);
 
-            // Options réseau
-            string serverStatus = isServerRunning ? " [EN LIGNE]" : " [ARRÊTÉ]";
-            Console.ForegroundColor = isServerRunning ? ConsoleColor.Cyan : ConsoleColor.DarkGray;
-            Console.WriteLine($"5. 🖥  Serveur TCP{serverStatus}");
-            Console.ForegroundColor = ConsoleColor.Yellow;
-            Console.WriteLine("6. 📡 Client distant");
+            // Option serveur avec couleur
+            if (isServerRunning)
+            {
+                Console.ForegroundColor = ConsoleColor.Green;
+                Console.WriteLine($"5. Serveur HTTP [EN LIGNE - port {BackupServer.Port}]");
+            }
+            else
+            {
+                Console.ForegroundColor = ConsoleColor.Red;
+                Console.WriteLine($"5. Serveur HTTP [ARRETE]");
+            }
             Console.ResetColor();
 
+            Console.WriteLine("6. Paramètres");
             Console.Write(LangConsole.Msg["Choice"]);
         }
 
@@ -83,7 +89,7 @@ namespace EasySave.View
             Console.Write(LangConsole.Msg["Choice"]);
         }
 
-        public string LireSaisie()
+        public string? LireSaisie()
         {
             return Console.ReadLine();
         }
