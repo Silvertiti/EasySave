@@ -54,7 +54,7 @@ namespace EasySave.View
             Console.WriteLine("--------------------------------------------------\n");
         }
 
-        public void AfficherMenu()
+        public void AfficherMenu(bool isServerRunning = false)
         {
             Console.WriteLine(LangConsole.Msg["MenuTitle"]);
             Console.WriteLine(LangConsole.Msg["List"]);
@@ -62,6 +62,15 @@ namespace EasySave.View
             Console.WriteLine(LangConsole.Msg["Run"]);
             Console.WriteLine(LangConsole.Msg["Quit"]);
             Console.WriteLine(LangConsole.Msg["Settings"]);
+
+            // Options réseau
+            string serverStatus = isServerRunning ? " [EN LIGNE]" : " [ARRÊTÉ]";
+            Console.ForegroundColor = isServerRunning ? ConsoleColor.Cyan : ConsoleColor.DarkGray;
+            Console.WriteLine($"5. 🖥  Serveur TCP{serverStatus}");
+            Console.ForegroundColor = ConsoleColor.Yellow;
+            Console.WriteLine("6. 📡 Client distant");
+            Console.ResetColor();
+
             Console.Write(LangConsole.Msg["Choice"]);
         }
 

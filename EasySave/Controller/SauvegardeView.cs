@@ -1,6 +1,7 @@
 ﻿using System;
 using EasySave.Core.Controller;
 using EasySave.Core.Models;
+using EasySave.Core.Services;
 using EasySave.View;
 
 namespace EasySave.Controller
@@ -9,84 +10,67 @@ namespace EasySave.Controller
     {
         SauvegardeController controller = new SauvegardeController();
         ConsoleTools consoleTools = new ConsoleTools();
+        BackupServer server = new BackupServer();
 
         public void Start(string[] args)
         {
-            if (args.Length > 0)
-            {
-                controller.ExecuterSauvegarde(Console.WriteLine);
-                return;
-            }
+            if (args.Length > 0) { controller.ExecuterSauvegarde(Console.WriteLine); return; }
+
             consoleTools.ChoixLangue();
             var k = Console.ReadKey();
             Console.WriteLine();
-            if (LangConsole.Msg == null || LangConsole.Msg.Count == 0) LangConsole.Init(k.KeyChar == '1' ? "en" : "fr");
-            else LangConsole.Init(k.KeyChar == '1' ? "en" : "fr");
-
+            LangConsole.Init(k.KeyChar == '1' ? "en" : "fr");
             Console.Clear();
             consoleTools.AfficherLogo();
+
+            // Démarrage automatique du serveur TCP en arrière-plan
+            server.OnLog += msg =>
+            {
+                Console.ForegroundColor = ConsoleColor.DarkCyan;
+                Console.WriteLine($"\n[Serveur] {msg}");
+                Console.ResetColor();
+            };
+            server.Start(controller);
+            Console.ForegroundColor = ConsoleColor.Cyan;
+            Console.WriteLine($"[Serveur TCP démarré sur le port {BackupServer.Port} — en attente de connexions distantes]");
+            Console.ResetColor();
 
             bool continuer = true;
             while (continuer)
             {
                 consoleTools.AfficherMenu();
-                string choix = consoleTools.LireSaisie();
-
-                switch (choix)
+                switch (consoleTools.LireSaisie())
                 {
                     case "1": Lister(); break;
                     case "2": Ajouter(); break;
                     case "3":
                         controller.ExecuterSauvegarde(consoleTools.AfficherMessage);
-
-                        consoleTools.AfficherMessage("\nAppuyez sur une touche...");
-                        Console.ReadKey();
-                        Console.Clear();
-                        consoleTools.AfficherLogo();
+                        Console.WriteLine("\nAppuyez sur une touche..."); Console.ReadKey();
+                        Console.Clear(); consoleTools.AfficherLogo();
                         break;
                     case "4": continuer = false; break;
                 }
             }
+
+            server.Stop();
         }
 
         void Lister()
         {
             consoleTools.AfficherListe(controller.myJobs);
             consoleTools.AfficherMessage("\n(Entrez un numéro pour supprimer, ou 0 pour retour)");
-            string choix = consoleTools.LireSaisie();
-
-            if (int.TryParse(choix, out int index) && index > 0 && index <= controller.myJobs.Count)
-            {
-                controller.DeleteJob(index - 1);
-                consoleTools.AfficherMessage("Travail supprimé !");
-            }
+            if (int.TryParse(consoleTools.LireSaisie(), out int i) && i > 0 && i <= controller.myJobs.Count)
+            { controller.DeleteJob(i - 1); consoleTools.AfficherMessage("Supprimé !"); }
         }
 
         void Ajouter()
         {
-
-            consoleTools.AfficherMessage("Nom du travail :");
-            string nom = consoleTools.LireSaisie();
-
-            consoleTools.AfficherMessage("Source :");
-            string src = consoleTools.LireSaisie().Replace("\"", "").Trim();
-
-            consoleTools.AfficherMessage("Cible :");
-            string dest = consoleTools.LireSaisie().Replace("\"", "").Trim();
-
-            consoleTools.AfficherMessage("Type (1=Complet, 2=Différentiel) :");
-            string type = consoleTools.LireSaisie();
-            var newJob = new ModelJob
-            {
-                Name = nom,
-                Source = src,
-                Target = dest,
-                IsFull = (type == "1")
-            };
-
-            controller.AddJob(newJob);
-
-            consoleTools.AfficherMessage("Sauvegardé avec succès !");
+            consoleTools.AfficherMessage("Nom :");       string nom  = consoleTools.LireSaisie();
+            consoleTools.AfficherMessage("Source :");    string src  = consoleTools.LireSaisie().Replace("\"", "").Trim();
+            consoleTools.AfficherMessage("Cible :");     string dest = consoleTools.LireSaisie().Replace("\"", "").Trim();
+            consoleTools.AfficherMessage("Type (1=Complet, 2=Différentiel) :"); string type = consoleTools.LireSaisie();
+            controller.AddJob(new ModelJob { Name = nom, Source = src, Target = dest, IsFull = (type == "1") });
+            consoleTools.AfficherMessage("Sauvegardé !");
         }
     }
 }
