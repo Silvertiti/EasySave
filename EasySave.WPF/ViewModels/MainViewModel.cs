@@ -36,8 +36,7 @@ namespace EasySave.WPF.ViewModels
             BtnDeleteAllText = CleanTranslation(GetTxt("DeleteAll", "Tout Supprimer"));
             BtnSettingsText = "⚙  " + GetTxt("Settings", "Paramètres");
 
-            _server.OnLog += msg => Application.Current.Dispatcher.Invoke(() =>
-                ServerLog = ServerLog + "\n" + msg);
+            _server.OnLog += msg => Application.Current.Dispatcher.Invoke(() => AppendLog(msg));
         }
 
         public void ToggleServer()
@@ -46,8 +45,7 @@ namespace EasySave.WPF.ViewModels
             {
                 _server.Stop();
                 _server = new BackupServer();
-                _server.OnLog += msg => Application.Current.Dispatcher.Invoke(() =>
-                    ServerLog = ServerLog + "\n" + msg);
+                _server.OnLog += msg => Application.Current.Dispatcher.Invoke(() => AppendLog(msg));
                 IsServerRunning = false;
             }
             else
@@ -55,6 +53,15 @@ namespace EasySave.WPF.ViewModels
                 _server.Start(_model);
                 IsServerRunning = true;
             }
+        }
+
+        private void AppendLog(string msg)
+        {
+            var lines = (ServerLog + "\n" + msg).Split('\n');
+            if (lines.Length > 20)
+                ServerLog = string.Join("\n", lines[^20..]);
+            else
+                ServerLog = string.Join("\n", lines);
         }
 
         public string SendClientCommand(string host, int port, string command)
