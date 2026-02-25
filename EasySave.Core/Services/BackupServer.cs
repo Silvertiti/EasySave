@@ -69,9 +69,10 @@ namespace EasySave.Core.Services
                 while (!string.IsNullOrEmpty(header = reader.ReadLine())) { }
 
                 // Extraire le chemin
-                string path = "/";
-                var parts = requestLine.Split(' ');
-                if (parts.Length >= 2) path = parts[1].ToLower();
+                string pathFull = "/";
+                var parts = requestLine.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+                if (parts.Length >= 2) pathFull = parts[1];
+                string path = pathFull.ToLower();
 
                 var writer = new StreamWriter(stream, new UTF8Encoding(false)) { AutoFlush = true };
 
@@ -79,57 +80,27 @@ namespace EasySave.Core.Services
                 writer.WriteLine("HTTP/1.1 200 OK");
                 writer.WriteLine("Access-Control-Allow-Origin: *");
                 writer.WriteLine("Connection: close");
-
-                if (path == "/run")
+                
+                if (path.StartsWith("/run-job?name="))
                 {
-                    writer.WriteLine("Content-Type: text/html; charset=utf-8");
-                    writer.WriteLine();
-
-                    // Compter le total de fichiers
-                    int totalFiles = 0;
-                    if (_controller != null)
-                        foreach (var j in _controller.myJobs)
-                            if (Directory.Exists(j.Source))
-                                totalFiles += Directory.GetFiles(j.Source, "*.*", SearchOption.AllDirectories).Length;
-                    int filesPerBlock = Math.Max(1, totalFiles / 10);
-
-                    // HTML initial avec 10 cases
-                    writer.Write(@"<!DOCTYPE html><html><head><meta charset=""utf-8""><title>EasySave</title>
-<style>body{font-family:Arial;background:#111;color:#eee;text-align:center;padding-top:40px}
-.bar{display:flex;gap:4px;justify-content:center;margin:20px 0}
-.b{width:40px;height:40px;background:#333;border-radius:4px}
-.b.on{background:#4af}
-pre{text-align:left;max-width:600px;margin:20px auto;font-size:12px;color:#aaa;max-height:300px;overflow:auto}</style>
-</head><body><h2>Sauvegarde en cours...</h2>
-<div class=""bar"">");
-                    for (int i = 0; i < 10; i++)
-                        writer.Write($@"<div class=""b"" id=""b{i}""></div>");
-                    writer.Write(@"</div><pre id=""log""></pre>
-<script>function s(n){document.getElementById('b'+n).className='b on';}
-function l(t){var p=document.getElementById('log');p.textContent+=t+'\n';p.scrollTop=99999;}</script>");
-                    writer.Flush();
-
-                    // Lancer les sauvegardes et streamer la progression
-                    int done = 0;
-                    int lastBlock = -1;
-                    Log("Commande RUN_ALL reçue");
-                    _controller?.ExecuterSauvegarde(msg =>
+                    string jobName = Uri.UnescapeDataString(pathFull.Substring(14));
+                    var job = _controller?.myJobs.FirstOrDefault(j => j.Name == jobName);
+                    if (job != null)
                     {
-                        done++;
-                        int block = Math.Min(9, done / filesPerBlock);
-                        string js = $"<script>l('{msg.Replace("'", "").Replace("\\", "\\\\")}');";
-                        if (block > lastBlock) { js += $"s({block});"; lastBlock = block; }
-                        js += "</script>";
-                        writer.Write(js);
-                        writer.Flush();
-                        Log(msg);
-                    });
-
-                    // Remplir toutes les cases restantes
-                    for (int i = lastBlock + 1; i < 10; i++)
-                        writer.Write($"<script>s({i});</script>");
-                    writer.Write("<script>document.querySelector('h2').textContent='Termine !';var a=document.createElement('a');a.href='/';a.textContent='X';a.style='display:inline-block;margin-top:20px;color:#f55;font-size:24px;text-decoration:none;border:1px solid #f55;padding:8px 16px;border-radius:6px';document.body.appendChild(a);</script></body></html>");
-                    writer.Flush();
+                        if (_controller != null) _controller.IsPausedRequested = false;
+                        Task.Run(() => _controller?.ExecuterUnSeulJob(job, msg => Log(msg)));
+                    }
+                    writer.WriteLine("Content-Type: application/json; charset=utf-8");
+                    writer.WriteLine();
+                    writer.WriteLine("{\"status\":\"ok\"}");
+                }
+                else if (path == "/run")
+                {
+                    if (_controller != null) _controller.IsPausedRequested = false;
+                    Task.Run(() => _controller?.ExecuterSauvegarde(msg => Log(msg)));
+                    writer.WriteLine("Content-Type: application/json; charset=utf-8");
+                    writer.WriteLine();
+                    writer.WriteLine("{\"status\":\"started_all\"}");
                 }
                 else if (path == "/list")
                 {
@@ -140,6 +111,14 @@ function l(t){var p=document.getElementById('log');p.textContent+=t+'\n';p.scrol
                     else
                         foreach (var j in _controller.myJobs)
                             writer.WriteLine($"{j.Name} | {j.Source} -> {j.Target}");
+                }
+                else if (path == "/pause")
+                {
+                    if (_controller != null) _controller.IsPausedRequested = true;
+                    writer.WriteLine("Content-Type: application/json; charset=utf-8");
+                    writer.WriteLine("Access-Control-Allow-Origin: *");
+                    writer.WriteLine();
+                    writer.WriteLine("{\"status\":\"paused\"}");
                 }
                 else if (path == "/status")
                 {
@@ -152,38 +131,92 @@ function l(t){var p=document.getElementById('log');p.textContent+=t+'\n';p.scrol
                 }
                 else
                 {
+                    string jobsHtml = "";
+                    if (_controller != null)
+                    {
+                        foreach (var j in _controller.myJobs)
+                        {
+                            jobsHtml += $@"
+                            <div class='job'>
+                                <div style='text-align:left;max-width:300px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;'><b>{j.Name}</b><br><small style='color:#888'>{j.Source}</small></div>
+                                <button id='btn_{j.Name}' class='btn btn-play' onclick='actionJob(""{j.Name}"")'>Play</button>
+                            </div>";
+                        }
+                    }
+
                     // Page d'accueil HTML
                     string html = $@"<!DOCTYPE html>
 <html><head><meta charset=""utf-8""><title>EasySave Monitor</title>
-<style>body{{font-family:Arial;background:#111;color:#eee;text-align:center;padding-top:60px}}a{{display:block;color:#4af;font-size:18px;margin:10px auto;width:300px;padding:10px;border:1px solid #4af;text-decoration:none}}a:hover{{background:#223}}.prog-bar{{width:300px;height:20px;background:#333;margin:10px auto;border-radius:10px;overflow:hidden}}.prog-fill{{height:100%;background:#10B981;width:0%;transition:width 0.5s}}</style>
+<style>
+body{{font-family:Arial;background:#111;color:#eee;text-align:center;padding:40px}}
+.blocks{{display:flex;gap:4px;justify-content:center;margin:10px auto;width:400px}}
+.block{{flex:1;height:12px;background:#333;border-radius:2px;}}
+.block.on{{background:#10B981;}}
+.job{{display:flex;justify-content:space-between;align-items:center;background:#222;padding:15px;margin:10px auto;width:400px;border-radius:8px;}}
+.btn{{padding:8px 15px;border:none;border-radius:4px;cursor:pointer;font-weight:bold;color:#111;width:100px;}}
+.btn-play{{background:#10B981;}}
+.btn-pause{{background:#EAB308;}}
+a{{color:#4af;text-decoration:none;}} a:hover{{text-decoration:underline;}}
+</style>
 <script>
+function actionJob(name) {{
+    let btn = document.getElementById('btn_' + name);
+    if (btn.innerText === 'Pause') {{
+        fetch('/pause');
+    }} else {{
+        fetch('/run-job?name=' + encodeURIComponent(name));
+    }}
+}}
+
 setInterval(() => {{
   fetch('/status').then(r => r.json()).then(data => {{
+    // Reset all buttons graphically
+    document.querySelectorAll('.btn').forEach(b => {{
+        if(b.innerText === 'Pause') {{ b.innerText = 'Play'; b.className = 'btn btn-play'; }}
+    }});
+
     if(data.State && data.State !== 'INACTIF') {{
-       document.getElementById('progText').innerText = data.Name + ' - ' + data.Progression + '% (' + data.State + ')';
-       document.getElementById('progFill').style.width = data.Progression + '%';
+       document.getElementById('progText').innerText = data.Name + ' (' + data.State + ')';
+       let blocksOn = Math.floor(data.Progression / 10);
+       for(let i=1; i<=10; i++) {{
+           document.getElementById('block'+i).className = (i <= blocksOn || (data.Progression > 0 && i === 1)) ? 'block on' : 'block';
+       }}
+       
+       let activeBtn = document.getElementById('btn_' + data.Name);
+       if (activeBtn) {{
+           if (data.State === 'PAUSE') {{
+               activeBtn.innerText = 'Reprendre';
+               activeBtn.className = 'btn btn-play';
+           }} else {{
+               activeBtn.innerText = 'Pause';
+               activeBtn.className = 'btn btn-pause';
+           }}
+       }}
     }} else {{
        document.getElementById('progText').innerText = 'Prêt';
-       document.getElementById('progFill').style.width = '0%';
+       for(let i=1; i<=10; i++) document.getElementById('block'+i).className = 'block';
     }}
   }}).catch(() => {{}});
 }}, 1000);
 </script>
 </head><body>
 <h2>EasySave Server</h2>
-<p>{_controller?.myJobs.Count ?? 0} job(s)</p>
 
-<div class=""prog-bar""><div id=""progFill"" class=""prog-fill""></div></div>
+<div class=""blocks"">
+    <div class=""block"" id=""block1""></div><div class=""block"" id=""block2""></div><div class=""block"" id=""block3""></div><div class=""block"" id=""block4""></div><div class=""block"" id=""block5""></div><div class=""block"" id=""block6""></div><div class=""block"" id=""block7""></div><div class=""block"" id=""block8""></div><div class=""block"" id=""block9""></div><div class=""block"" id=""block10""></div>
+</div>
 <div id=""progText"" style=""margin-bottom:20px;color:#aaa;"">Prêt</div>
 
-<a href=""/run"">Lancer toutes les sauvegardes</a>
-<a href=""/list"">Lister les jobs</a>
+<div style=""margin:30px 0"">
+    {jobsHtml}
+</div>
+
+<a href=""#"" onclick=""fetch('/run')"">Tout lancer</a>
 </body></html>";
                     writer.WriteLine("Content-Type: text/html; charset=utf-8");
                     writer.WriteLine($"Content-Length: {Encoding.UTF8.GetByteCount(html)}");
                     writer.WriteLine();
                     writer.Write(html);
-
                 }
             }
             catch (Exception ex) { Log($"Erreur: {ex.Message}"); }

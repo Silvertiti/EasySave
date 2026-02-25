@@ -79,11 +79,10 @@ namespace EasySave.Core.Controller
 
                 string[] files = Directory.GetFiles(job.Source, "*.*", SearchOption.AllDirectories);
                 int totalFiles = files.Length;
+                
                 long totalSize = 0;
-                foreach (string f in files) totalSize += new FileInfo(f).Length;
-
                 int filesLeft = totalFiles;
-                long sizeLeft = totalSize;
+                long sizeLeft = 0;
                 string resumeFile = null;
 
                 if (File.Exists(stateFile))
@@ -94,14 +93,18 @@ namespace EasySave.Core.Controller
                         {
                             resumeFile = etat.SourceFile;
                             filesLeft = etat.FilesLeft;
+                            totalSize = etat.TotalSize;
                             sizeLeft = etat.SizeLeft;
                         }
                     } catch { }
                 }
 
                 bool skip = !string.IsNullOrEmpty(resumeFile);
+
                 if (!skip) 
                 {
+                    foreach (string f in files) totalSize += new FileInfo(f).Length;
+                    sizeLeft = totalSize;
                     UpdateEtat(job.Name, job.Source, job.Target, "ACTIF", totalFiles, totalSize, filesLeft, sizeLeft);
                 }
 

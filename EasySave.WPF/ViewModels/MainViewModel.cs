@@ -45,6 +45,64 @@ namespace EasySave.WPF.ViewModels
             BtnSettingsText = "⚙  " + GetTxt("Settings", "Paramètres");
 
             _server.OnLog += msg => Application.Current.Dispatcher.Invoke(() => AppendLog(msg));
+
+            // Synchronisation basique universelle en lisant state.json
+            Task.Run(async () =>
+            {
+                while (true)
+                {
+                    await Task.Delay(1000);
+                    try
+                    {
+                        if (File.Exists("state.json"))
+                        {
+                            var json = File.ReadAllText("state.json");
+                            var etat = Newtonsoft.Json.JsonConvert.DeserializeObject<ModelEtat>(json);
+
+                            Application.Current.Dispatcher.Invoke(() =>
+                            {
+                                if (etat != null && etat.State != "INACTIF")
+                                {
+                                    IsBackupRunning = true;
+                                    BackupProgress = etat.Progression / 10;
+                                    ActiveJobName = etat.Name;
+                                    
+                                    var job = JobsList.FirstOrDefault(j => j.Name == etat.Name);
+                                    if (job != null)
+                                    {
+                                        job.State = etat.State == "PAUSE" ? "PAUSED" : "RUNNING";
+                                    }
+                                }
+                                else
+                                {
+                                    // Etat inactif -> s'assurer que les jobs sont arrêtés visuellement
+                                    bool wasRunningExternally = false;
+                                    foreach (var j in JobsList)
+                                    {
+                                        if (j.State != "STOPPED") 
+                                        { 
+                                            j.State = "STOPPED"; 
+                                            wasRunningExternally = true; 
+                                        }
+                                    }
+
+                                    // Si la tâche tournait mais sans passer par le bloc local "RunJob" final
+                                    if (IsBackupRunning && wasRunningExternally && !BackupStatusText.Contains("terminé") && !BackupStatusText.Contains("Arrêt"))
+                                    {
+                                        BackupProgress = 10;
+                                        BackupStatusText = "Sauvegarde terminée !";
+                                        Task.Run(async () => { 
+                                            await Task.Delay(2000); 
+                                            Application.Current.Dispatcher.Invoke(() => { IsBackupRunning = false; ActiveJobName = ""; }); 
+                                        });
+                                    }
+                                }
+                            });
+                        }
+                    }
+                    catch { }
+                }
+            });
         }
 
         public void ToggleServer()
@@ -81,30 +139,18 @@ namespace EasySave.WPF.ViewModels
         public async void RunAllSave()
         {
             if (JobsList.Count == 0) { MessageBox.Show("Liste vide", "Info"); return; }
-            if (IsBackupRunning) return;
+            if (IsBackupRunning && !_model.IsPausedRequested) return;
 
             IsBackupRunning = true;
+            _model.IsPausedRequested = false;
             BackupProgress = 0;
             BackupStatusText = "Initialisation...";
 
             await Task.Run(() =>
             {
-                // Calculer le total pour la barre de 10
-                int totalFiles = 0;
-                foreach (var j in _model.myJobs)
-                    if (Directory.Exists(j.Source))
-                        totalFiles += Directory.GetFiles(j.Source, "*.*", SearchOption.AllDirectories).Length;
-                
-                int filesPerBlock = Math.Max(1, totalFiles / 10);
-                int done = 0;
-
                 _model.ExecuterSauvegarde(msg =>
                 {
-                    done++;
-                    int block = Math.Min(10, done / filesPerBlock);
-                    
                     Application.Current.Dispatcher.Invoke(() => {
-                        BackupProgress = block;
                         BackupStatusText = msg;
 
                         // Extraire le nom du job si le message commence par "Lancement : "
@@ -136,7 +182,8 @@ namespace EasySave.WPF.ViewModels
                 return;
             }
 
-            if (IsBackupRunning) return;
+            // Si une backup tourne, on interdit d'en lancer une nouvelle SAUF si on clique sur un job en pause pour le relancer
+            if (IsBackupRunning && job.State != "PAUSED") return;
 
             IsBackupRunning = true;
             _model.IsPausedRequested = false;
@@ -146,17 +193,9 @@ namespace EasySave.WPF.ViewModels
 
             await Task.Run(() =>
             {
-                int totalFiles = Directory.Exists(job.Source) ? Directory.GetFiles(job.Source, "*.*", SearchOption.AllDirectories).Length : 0;
-                int filesPerBlock = Math.Max(1, totalFiles / 10);
-                int done = 0;
-
                 _model.ExecuterUnSeulJob(job, msg =>
                 {
-                    done++;
-                    int block = Math.Min(10, done / filesPerBlock);
-
                     Application.Current.Dispatcher.Invoke(() => {
-                        BackupProgress = block;
                         BackupStatusText = msg;
                         ActiveJobName = job.Name;
 
