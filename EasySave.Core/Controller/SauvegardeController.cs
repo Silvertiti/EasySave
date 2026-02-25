@@ -16,6 +16,7 @@ namespace EasySave.Core.Controller
         BusinessSoftwareService businessSoftwareService = new BusinessSoftwareService();
         JobManager jobManager = new JobManager();
         private string stateFile = "state.json";
+        public bool IsPausedRequested { get; set; } = false;
 
         public SauvegardeController() { myJobs = jobManager.LoadData(); }
         public void AddJob(ModelJob newJob) { myJobs.Add(newJob); jobManager.SaveData(myJobs); }
@@ -83,16 +84,49 @@ namespace EasySave.Core.Controller
 
                 int filesLeft = totalFiles;
                 long sizeLeft = totalSize;
-                UpdateEtat(job.Name, job.Source, job.Target, "ACTIF", totalFiles, totalSize, filesLeft, sizeLeft);
+                string resumeFile = null;
+
+                if (File.Exists(stateFile))
+                {
+                    try {
+                        var etat = JsonConvert.DeserializeObject<ModelEtat>(File.ReadAllText(stateFile));
+                        if (etat != null && etat.Name == job.Name && etat.State == "PAUSE")
+                        {
+                            resumeFile = etat.SourceFile;
+                            filesLeft = etat.FilesLeft;
+                            sizeLeft = etat.SizeLeft;
+                        }
+                    } catch { }
+                }
+
+                bool skip = !string.IsNullOrEmpty(resumeFile);
+                if (!skip) 
+                {
+                    UpdateEtat(job.Name, job.Source, job.Target, "ACTIF", totalFiles, totalSize, filesLeft, sizeLeft);
+                }
+
                 List<string> extensionsToEncrypt = settings.ExtensionsToEncrypt.Split(',').Select(e => e.Trim().ToLower()).ToList();
 
                 foreach (string file in files)
                 {
+                    if (IsPausedRequested)
+                    {
+                        UpdateEtat(job.Name, file, "", "PAUSE", totalFiles, totalSize, filesLeft, sizeLeft);
+                        uiCallback("PAUSE : " + job.Name);
+                        return; // Arrêt complet, la vue pourra reprendre plus tard
+                    }
+
                     if (businessSoftwareService.IsBusinessSoftRunning())
                     {
                         uiCallback("INTERRUPTION : Logiciel métier détecté.");
                         LogManager.SaveLog(job.Name, "STOP_METIER", "STOP_METIER", 0, 0, 0);
                         break;
+                    }
+
+                    if (skip)
+                    {
+                        if (file == resumeFile) skip = false;
+                        if (skip) continue;
                     }
 
                     string relatif = file.Replace(job.Source, "").TrimStart('\\');

@@ -1,7 +1,9 @@
 ﻿<Window
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        xmlns:ViewModels="clr-namespace:EasySave.WPF.ViewModels" x:Class="EasySave.WPF.MainWindow"
+        xmlns:ViewModels="clr-namespace:EasySave.WPF.ViewModels" 
+        xmlns:Converters="clr-namespace:EasySave.WPF.Converters"
+        x:Class="EasySave.WPF.MainWindow"
         Title="EasySave" Height="750" Width="1050"
         WindowStartupLocation="CenterScreen"
         WindowStyle="None" ResizeMode="CanResize"
@@ -29,8 +31,13 @@
         <Geometry x:Key="IconMax">M4,4H20V20H4V4M6,6V18H18V6H6Z</Geometry>
         <Geometry x:Key="IconMin">M20,14H4V12H20V14Z</Geometry>
         <Geometry x:Key="IconPlay">M8,5.14V19.14L19,12.14L8,5.14Z</Geometry>
+        <Geometry x:Key="IconPause">M14,19H18V5H14M6,19H10V5H6V19Z</Geometry>
         <Geometry x:Key="IconTrash">M19,4H15.5L14.5,3H9.5L8.5,4H5V6H19M6,19A2,2 0 0,0 8,21H16A2,2 0 0,0 18,19V7H6V19Z</Geometry>
         <Geometry x:Key="IconLogo">M12,2A10,10 0 0,0 2,12A10,10 0 0,0 12,22A10,10 0 0,0 22,12A10,10 0 0,0 12,2Z</Geometry>
+        <Geometry x:Key="IconLoading">M12,4V2A10,10 0 0,0 2,12H4A8,8 0 0,1 12,4Z</Geometry>
+
+        <Converters:BoolToVisConverter x:Key="BoolToVisConverter"/>
+        <Converters:ProgressToColorConverter x:Key="ProgressToColorConverter"/>
     </Window.Resources>
 
     <WindowChrome.WindowChrome>
@@ -271,6 +278,16 @@
                                                             <Trigger Property="IsMouseOver" Value="True">
                                                                 <Setter TargetName="bdr" Property="Background" Value="#10B981"/>
                                                             </Trigger>
+                                                            <DataTrigger Binding="{Binding State}" Value="RUNNING">
+                                                                <Setter TargetName="icon" Property="Data" Value="{StaticResource IconPause}"/>
+                                                                <Setter TargetName="icon" Property="Width" Value="11"/>
+                                                                <Setter TargetName="icon" Property="Height" Value="11"/>
+                                                                <Setter TargetName="icon" Property="Margin" Value="0"/>
+                                                                <Setter TargetName="bdr" Property="Background" Value="#EAB308"/> <!-- Orange pour montrer l'action Pause -->
+                                                            </DataTrigger>
+                                                            <DataTrigger Binding="{Binding State}" Value="PAUSED">
+                                                                <Setter TargetName="icon" Property="Fill" Value="#EAB308"/> <!-- Jaune si en pause, Play button pour reprendre -->
+                                                            </DataTrigger>
                                                         </ControlTemplate.Triggers>
                                                     </ControlTemplate>
                                                 </Button.Template>
@@ -299,8 +316,25 @@
                         </ListBox.ItemTemplate>
                     </ListBox>
 
+                    <!-- Zone de Progression Minimaliste -->
+                    <StackPanel Grid.Row="2" Margin="0,15,0,0" Visibility="{Binding IsBackupRunning, Converter={StaticResource BoolToVisConverter}}">
+                        <TextBlock Text="{Binding BackupStatusText}" Foreground="{StaticResource TextSecondary}" FontSize="12" Margin="0,0,0,8" HorizontalAlignment="Center" TextTrimming="CharacterEllipsis"/>
+                        <UniformGrid Columns="10" Height="8">
+                            <Border Margin="2,0" CornerRadius="2" Background="{Binding BackupProgress, Converter={StaticResource ProgressToColorConverter}, ConverterParameter=1}"/>
+                            <Border Margin="2,0" CornerRadius="2" Background="{Binding BackupProgress, Converter={StaticResource ProgressToColorConverter}, ConverterParameter=2}"/>
+                            <Border Margin="2,0" CornerRadius="2" Background="{Binding BackupProgress, Converter={StaticResource ProgressToColorConverter}, ConverterParameter=3}"/>
+                            <Border Margin="2,0" CornerRadius="2" Background="{Binding BackupProgress, Converter={StaticResource ProgressToColorConverter}, ConverterParameter=4}"/>
+                            <Border Margin="2,0" CornerRadius="2" Background="{Binding BackupProgress, Converter={StaticResource ProgressToColorConverter}, ConverterParameter=5}"/>
+                            <Border Margin="2,0" CornerRadius="2" Background="{Binding BackupProgress, Converter={StaticResource ProgressToColorConverter}, ConverterParameter=6}"/>
+                            <Border Margin="2,0" CornerRadius="2" Background="{Binding BackupProgress, Converter={StaticResource ProgressToColorConverter}, ConverterParameter=7}"/>
+                            <Border Margin="2,0" CornerRadius="2" Background="{Binding BackupProgress, Converter={StaticResource ProgressToColorConverter}, ConverterParameter=8}"/>
+                            <Border Margin="2,0" CornerRadius="2" Background="{Binding BackupProgress, Converter={StaticResource ProgressToColorConverter}, ConverterParameter=9}"/>
+                            <Border Margin="2,0" CornerRadius="2" Background="{Binding BackupProgress, Converter={StaticResource ProgressToColorConverter}, ConverterParameter=10}"/>
+                        </UniformGrid>
+                    </StackPanel>
+
                     <!-- Panneau Serveur -->
-                    <Border Grid.Row="2" Background="#1A1A2E" BorderBrush="#2A2A4A" BorderThickness="1" CornerRadius="8" Margin="0,16,0,0" Padding="14,10">
+                    <Border Grid.Row="2" Background="#1A1A2E" BorderBrush="#2A2A4A" BorderThickness="1" CornerRadius="8" Margin="0,55,0,0" Padding="14,10">
                         <Grid>
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="Auto"/>

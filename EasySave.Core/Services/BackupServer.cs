@@ -64,7 +64,7 @@ namespace EasySave.Core.Services
                 string? requestLine = reader.ReadLine();
                 if (requestLine == null) return;
 
-                // Lire les headers (on les ignore)
+                // Lire les headers
                 string? header;
                 while (!string.IsNullOrEmpty(header = reader.ReadLine())) { }
 
@@ -143,29 +143,47 @@ function l(t){var p=document.getElementById('log');p.textContent+=t+'\n';p.scrol
                 }
                 else if (path == "/status")
                 {
-                    writer.WriteLine("Content-Type: text/plain; charset=utf-8");
+                    writer.WriteLine("Content-Type: application/json; charset=utf-8");
+                    writer.WriteLine("Access-Control-Allow-Origin: *");
                     writer.WriteLine();
                     writer.WriteLine(File.Exists("state.json")
                         ? File.ReadAllText("state.json")
-                        : "Aucune sauvegarde en cours.");
+                        : "{}");
                 }
                 else
                 {
                     // Page d'accueil HTML
                     string html = $@"<!DOCTYPE html>
-<html><head><meta charset=""utf-8""><title>EasySave</title>
-<style>body{{font-family:Arial;background:#111;color:#eee;text-align:center;padding-top:60px}}a{{display:block;color:#4af;font-size:18px;margin:10px auto;width:300px;padding:10px;border:1px solid #4af;text-decoration:none}}a:hover{{background:#223}}</style>
+<html><head><meta charset=""utf-8""><title>EasySave Monitor</title>
+<style>body{{font-family:Arial;background:#111;color:#eee;text-align:center;padding-top:60px}}a{{display:block;color:#4af;font-size:18px;margin:10px auto;width:300px;padding:10px;border:1px solid #4af;text-decoration:none}}a:hover{{background:#223}}.prog-bar{{width:300px;height:20px;background:#333;margin:10px auto;border-radius:10px;overflow:hidden}}.prog-fill{{height:100%;background:#10B981;width:0%;transition:width 0.5s}}</style>
+<script>
+setInterval(() => {{
+  fetch('/status').then(r => r.json()).then(data => {{
+    if(data.State && data.State !== 'INACTIF') {{
+       document.getElementById('progText').innerText = data.Name + ' - ' + data.Progression + '% (' + data.State + ')';
+       document.getElementById('progFill').style.width = data.Progression + '%';
+    }} else {{
+       document.getElementById('progText').innerText = 'Prêt';
+       document.getElementById('progFill').style.width = '0%';
+    }}
+  }}).catch(() => {{}});
+}}, 1000);
+</script>
 </head><body>
 <h2>EasySave Server</h2>
 <p>{_controller?.myJobs.Count ?? 0} job(s)</p>
+
+<div class=""prog-bar""><div id=""progFill"" class=""prog-fill""></div></div>
+<div id=""progText"" style=""margin-bottom:20px;color:#aaa;"">Prêt</div>
+
 <a href=""/run"">Lancer toutes les sauvegardes</a>
 <a href=""/list"">Lister les jobs</a>
-<a href=""/status"">Statut</a>
 </body></html>";
                     writer.WriteLine("Content-Type: text/html; charset=utf-8");
                     writer.WriteLine($"Content-Length: {Encoding.UTF8.GetByteCount(html)}");
                     writer.WriteLine();
                     writer.Write(html);
+
                 }
             }
             catch (Exception ex) { Log($"Erreur: {ex.Message}"); }

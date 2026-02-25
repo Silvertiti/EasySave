@@ -2,6 +2,8 @@
 using EasySave.Core.Services;
 using System.Collections.ObjectModel;
 using System.Windows;
+using System.IO;
+using System.Threading.Tasks;
 using EasySave.Core.Controller;
 using CommunityToolkit.Mvvm.Input;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -23,6 +25,12 @@ namespace EasySave.WPF.ViewModels
         private BackupServer _server = new BackupServer();
         [ObservableProperty] private bool _isServerRunning = false;
         [ObservableProperty] private string _serverLog = "";
+
+        // Progression Sauvegarde
+        [ObservableProperty] private bool _isBackupRunning = false;
+        [ObservableProperty] private int _backupProgress = 0; // 0 à 10
+        [ObservableProperty] private string _backupStatusText = "";
+        [ObservableProperty] private string _activeJobName = "";
 
         public MainViewModel()
         {
@@ -70,30 +78,112 @@ namespace EasySave.WPF.ViewModels
             return client.SendCommand(command);
         }
 
-        public void RunAllSave()
+        public async void RunAllSave()
         {
             if (JobsList.Count == 0) { MessageBox.Show("Liste vide", "Info"); return; }
-            _model.ExecuterSauvegarde(msg =>
+            if (IsBackupRunning) return;
+
+            IsBackupRunning = true;
+            BackupProgress = 0;
+            BackupStatusText = "Initialisation...";
+
+            await Task.Run(() =>
             {
-                if (msg.Contains("STOP") || msg.Contains("INTERRUPTION"))
-                    MessageBox.Show(msg, "Arrêt", MessageBoxButton.OK, MessageBoxImage.Warning);
-                else if (msg.Contains("ERREUR"))
-                    MessageBox.Show(msg, "Erreur", MessageBoxButton.OK, MessageBoxImage.Error);
+                // Calculer le total pour la barre de 10
+                int totalFiles = 0;
+                foreach (var j in _model.myJobs)
+                    if (Directory.Exists(j.Source))
+                        totalFiles += Directory.GetFiles(j.Source, "*.*", SearchOption.AllDirectories).Length;
+                
+                int filesPerBlock = Math.Max(1, totalFiles / 10);
+                int done = 0;
+
+                _model.ExecuterSauvegarde(msg =>
+                {
+                    done++;
+                    int block = Math.Min(10, done / filesPerBlock);
+                    
+                    Application.Current.Dispatcher.Invoke(() => {
+                        BackupProgress = block;
+                        BackupStatusText = msg;
+
+                        // Extraire le nom du job si le message commence par "Lancement : "
+                        if (msg.StartsWith("Lancement : "))
+                            ActiveJobName = msg.Replace("Lancement : ", "").Trim();
+
+                        if (msg.Contains("STOP") || msg.Contains("INTERRUPTION"))
+                            MessageBox.Show(msg, "Arrêt", MessageBoxButton.OK, MessageBoxImage.Warning);
+                        else if (msg.Contains("ERREUR"))
+                            MessageBox.Show(msg, "Erreur", MessageBoxButton.OK, MessageBoxImage.Error);
+                    });
+                });
             });
+
+            ActiveJobName = "";
+            BackupProgress = 10;
+            BackupStatusText = "Sauvegarde terminée !";
+            await Task.Delay(2000);
+            IsBackupRunning = false;
         }
 
-        public void RunJob(ModelJob job)
+        public async void RunJob(ModelJob job)
         {
             if (job == null) return;
-            _model.ExecuterUnSeulJob(job, msg =>
+
+            if (job.State == "RUNNING")
             {
-                if (msg.Contains("STOP") || msg.Contains("INTERRUPTION"))
-                    MessageBox.Show(msg, "Arrêt", MessageBoxButton.OK, MessageBoxImage.Warning);
-                else if (msg.Contains("ERREUR"))
-                    MessageBox.Show(msg, "Erreur", MessageBoxButton.OK, MessageBoxImage.Error);
-                else if (msg.Contains("Succès"))
-                    MessageBox.Show($"'{job.Name}' terminé avec succès.", "OK", MessageBoxButton.OK, MessageBoxImage.Information);
+                _model.IsPausedRequested = true;
+                return;
+            }
+
+            if (IsBackupRunning) return;
+
+            IsBackupRunning = true;
+            _model.IsPausedRequested = false;
+            job.State = "RUNNING";
+            BackupProgress = 0;
+            BackupStatusText = $"Lancement de {job.Name}...";
+
+            await Task.Run(() =>
+            {
+                int totalFiles = Directory.Exists(job.Source) ? Directory.GetFiles(job.Source, "*.*", SearchOption.AllDirectories).Length : 0;
+                int filesPerBlock = Math.Max(1, totalFiles / 10);
+                int done = 0;
+
+                _model.ExecuterUnSeulJob(job, msg =>
+                {
+                    done++;
+                    int block = Math.Min(10, done / filesPerBlock);
+
+                    Application.Current.Dispatcher.Invoke(() => {
+                        BackupProgress = block;
+                        BackupStatusText = msg;
+                        ActiveJobName = job.Name;
+
+                        if (msg.Contains("STOP") || msg.Contains("INTERRUPTION"))
+                            MessageBox.Show(msg, "Arrêt", MessageBoxButton.OK, MessageBoxImage.Warning);
+                        else if (msg.Contains("ERREUR"))
+                            MessageBox.Show(msg, "Erreur", MessageBoxButton.OK, MessageBoxImage.Error);
+                    });
+                });
             });
+
+            ActiveJobName = "";
+            bool wasPaused = _model.IsPausedRequested;
+            job.State = wasPaused ? "PAUSED" : "STOPPED";
+
+            if (wasPaused) 
+            {
+                 BackupStatusText = $"'{job.Name}' en pause.";
+            } 
+            else 
+            {
+                 BackupProgress = 10;
+                 BackupStatusText = $"'{job.Name}' terminé avec succès.";
+            }
+
+            await Task.Delay(2000);
+            IsBackupRunning = false;
         }
 
         public void DeleteJob(ModelJob job)

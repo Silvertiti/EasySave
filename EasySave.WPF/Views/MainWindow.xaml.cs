@@ -12,8 +12,7 @@ namespace EasySave.WPF
         public MainWindow()
         {
             InitializeComponent();
-            _vm = new MainViewModel();
-            this.DataContext = _vm;
+            _vm = (MainViewModel)this.DataContext;
         }
 
         // ── Fenêtre ──────────────────────────────────────────────────────────────────
