@@ -37,7 +37,7 @@ namespace EasySave.WPF
             _settings.CryptoSoftPath = TxtCryptoPath.Text.Trim();
             _settings.LogFormat = (RadioXml.IsChecked == true) ? "xml" : "json";
 
-            settingsManager.Save(_settings);
+            settingsManager.SaveSettings(_settings);
 
             MessageBox.Show("Paramètres sauvegardés avec succès.", "Succès", MessageBoxButton.OK, MessageBoxImage.Information);
             this.Close();
