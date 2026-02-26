@@ -1,0 +1,7 @@
+{
+  "ExtensionsToEncrypt": "txt,docx,xlsx",
+  "BusinessSoftware": "calc",
+  "LogFormat": "json",
+  "CryptoSoftPath": "",
+  "MaxParallelFileSizeKb": 200
+}

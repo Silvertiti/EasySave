@@ -62,7 +62,12 @@ namespace EasySave.Core.Controller
 
         public void ExecuterSauvegarde(Action<string> uiCallback)
         {
-            foreach (var job in myJobs) ExecuterUnSeulJob(job, uiCallback);
+            var tasks = new List<Task>();
+            foreach (var job in myJobs)
+            {
+                tasks.Add(Task.Run(() => ExecuterUnSeulJob(job, uiCallback)));
+            }
+            Task.WaitAll(tasks.ToArray());
         }
 
         public void ExecuterUnSeulJob(ModelJob job, Action<string> uiCallback)

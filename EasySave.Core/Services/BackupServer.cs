@@ -129,6 +129,38 @@ namespace EasySave.Core.Services
                         ? File.ReadAllText("state.json")
                         : "{}");
                 }
+                else if (path == "/logs")
+                {
+                    string logFolder = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "logs");
+                    string logContent = "Aucun log pour aujourd'hui.";
+                    string dateFmt = DateTime.Now.ToString("yyyy-MM-dd");
+                    string jsonPath = Path.Combine(logFolder, dateFmt + ".json");
+                    string xmlPath = Path.Combine(logFolder, dateFmt + ".xml");
+
+                    if (File.Exists(jsonPath)) logContent = File.ReadAllText(jsonPath);
+                    else if (File.Exists(xmlPath)) logContent = File.ReadAllText(xmlPath);
+
+                    string htmlLogs = $@"<!DOCTYPE html>
+<html><head><meta charset=""utf-8""><title>EasySave Logs</title>
+<style>
+body{{font-family:Consolas, monospace;background:#111;color:#10B981;padding:20px;}}
+h2{{color:#eee; text-align:center; font-family:Arial; margin-bottom:30px;}}
+pre{{background:#222; padding:20px; border-radius:8px; border:1px solid #333; overflow-x:auto; white-space:pre-wrap;}}
+a{{color:#4af;text-decoration:none; font-family:Arial; display:block; text-align:center; margin-top:20px;}} 
+a:hover{{text-decoration:underline;}}
+</style>
+</head><body>
+<h2>Journaux de bord (Logs du jour)</h2>
+<pre>{logContent}</pre>
+<a href=""/"">Retour au moniteur</a>
+</body></html>";
+
+                    writer.WriteLine("Content-Type: text/html; charset=utf-8");
+                    writer.WriteLine($"Content-Length: {Encoding.UTF8.GetByteCount(htmlLogs)}");
+                    writer.WriteLine("Access-Control-Allow-Origin: *");
+                    writer.WriteLine();
+                    writer.Write(htmlLogs);
+                }
                 else
                 {
                     string jobsHtml = "";
@@ -211,7 +243,8 @@ setInterval(() => {{
     {jobsHtml}
 </div>
 
-<a href=""#"" onclick=""fetch('/run')"">Tout lancer</a>
+<a href=""#"" onclick=""fetch('/run')"">Tout lancer</a> | 
+<a href=""/logs"" target=""_blank"">Voir les logs du jour</a>
 </body></html>";
                     writer.WriteLine("Content-Type: text/html; charset=utf-8");
                     writer.WriteLine($"Content-Length: {Encoding.UTF8.GetByteCount(html)}");
