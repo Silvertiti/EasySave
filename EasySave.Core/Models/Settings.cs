@@ -12,5 +12,6 @@ namespace EasySave.Core.Models
         public string LogFormat { get; set; } = "json";
         public string CryptoSoftPath { get; set; } = "";
         public long MaxParallelFileSizeKb { get; set; } = 10000; // 10 Mo par défaut
+        public string PrioritizedExtensions { get; set; } = "pdf,txt,docx";
     }
 }

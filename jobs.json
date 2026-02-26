@@ -1,8 +1,14 @@
 [
   {
-    "Name": "Test",
-    "Source": "C:\\Users\\methe\\OneDrive\\Bureau\\easySave-envoie",
-    "Target": "C:\\Users\\methe\\OneDrive\\Bureau\\easySave-reception",
+    "Name": "1",
+    "Source": "F:\\CESI\\ALTERNANCE 2025-2028\\ALTERNANCE 2025-2026\\Projet EasySave\\test source 1",
+    "Target": "F:\\CESI\\ALTERNANCE 2025-2028\\ALTERNANCE 2025-2026\\Projet EasySave\\test cible 1",
+    "IsFull": true
+  },
+  {
+    "Name": "2",
+    "Source": "F:\\CESI\\ALTERNANCE 2025-2028\\ALTERNANCE 2025-2026\\Projet EasySave\\test source 2",
+    "Target": "F:\\CESI\\ALTERNANCE 2025-2028\\ALTERNANCE 2025-2026\\Projet EasySave\\test CIBLE 2",
     "IsFull": true
   }
 ]
