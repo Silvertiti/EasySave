@@ -15,7 +15,6 @@ namespace EasySave.Core.Models
 
             try
             {
-                // Chercher dans le dossier de l'EXE puis dans le parent (pour le mode dev)
                 string filePath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "lang_gui.json");
                 if (!File.Exists(filePath))
                     filePath = "lang_gui.json";
@@ -37,7 +36,6 @@ namespace EasySave.Core.Models
             }
             catch (Exception ex)
             {
-                // En cas d'erreur, on initialise au moins le dictionnaire pour éviter les crashs
                 Msg = new Dictionary<string, string>();
             }
         }

@@ -1,14 +1,13 @@
 ﻿using EasySave.Core.Models;
 using EasySave.Core.Services;
 using System.Collections.ObjectModel;
+using System.Linq;
 using System.Windows;
 using System.IO;
-using System.Linq;
 using System.Threading.Tasks;
 using EasySave.Core.Controller;
 using CommunityToolkit.Mvvm.Input;
 using CommunityToolkit.Mvvm.ComponentModel;
-using System;
 
 namespace EasySave.WPF.ViewModels
 {
@@ -16,10 +15,10 @@ namespace EasySave.WPF.ViewModels
     {
         public ObservableCollection<ModelJob> JobsList { get; set; }
         public SauvegardeController _model;
-        public string Title          { get; set; }
-        public string LblMenu        { get; set; }
-        public string BtnAddText     { get; set; }
-        public string BtnRunText     { get; set; }
+        public string Title            { get; set; }
+        public string LblMenu          { get; set; }
+        public string BtnAddText       { get; set; }
+        public string BtnRunText       { get; set; }
         public string BtnDeleteAllText { get; set; }
         public string BtnSettingsText  { get; set; }
 
@@ -33,10 +32,11 @@ namespace EasySave.WPF.ViewModels
 
         public MainViewModel()
         {
-            _model    = new SauvegardeController();
-            JobsList  = new ObservableCollection<ModelJob>(_model.myJobs);
-            Title     = GetTxt("MenuTitle", "EasySave Dashboard").Replace("\n","").Replace("-","").Trim();
-            LblMenu   = GetTxt("MenuLabel", "MENU");
+            _model   = new SauvegardeController();
+            JobsList = new ObservableCollection<ModelJob>(_model.myJobs);
+
+            Title          = GetTxt("MenuTitle", "EasySave Dashboard").Replace("\n","").Replace("-","").Trim();
+            LblMenu        = GetTxt("MenuLabel", "MENU");
             BtnAddText     = CleanTranslation(GetTxt("Add",       "Ajouter"));
             BtnRunText     = CleanTranslation(GetTxt("Run",       "Tout Lancer"));
             if (BtnRunText.ToUpper().Contains("LANCER")) BtnRunText = "Tout Lancer";
@@ -44,9 +44,6 @@ namespace EasySave.WPF.ViewModels
             BtnSettingsText  = "⚙  " + GetTxt("Settings", "Paramètres");
 
             _server.OnLog += msg => Application.Current.Dispatcher.Invoke(() => AppendLog(msg));
-            _server.OnRunJobRequested += job => Application.Current.Dispatcher.Invoke(() => RunJob(job));
-            _server.OnRunAllRequested += () => Application.Current.Dispatcher.Invoke(() => RunAllSave());
-
             Task.Run(async () =>
             {
                 while (true)
@@ -72,7 +69,6 @@ namespace EasySave.WPF.ViewModels
                 }
             });
         }
-
         public void ToggleServer()
         {
             if (_server.IsRunning)
@@ -80,8 +76,6 @@ namespace EasySave.WPF.ViewModels
                 _server.Stop();
                 _server = new BackupServer();
                 _server.OnLog += msg => Application.Current.Dispatcher.Invoke(() => AppendLog(msg));
-                _server.OnRunJobRequested += job => Application.Current.Dispatcher.Invoke(() => RunJob(job));
-                _server.OnRunAllRequested += () => Application.Current.Dispatcher.Invoke(() => RunAllSave());
                 IsServerRunning = false;
             }
             else { _server.Start(_model); IsServerRunning = true; }
@@ -125,10 +119,7 @@ namespace EasySave.WPF.ViewModels
             await Task.WhenAll(tasks);
 
             foreach (var j in JobsList)
-            {
-                if (j.State == "RUNNING")
-                    j.State = "STOPPED";
-            }
+                if (j.State == "RUNNING") j.State = "STOPPED";
 
             ActiveJobName    = "";
             BackupProgress   = 10;
@@ -182,19 +173,18 @@ namespace EasySave.WPF.ViewModels
 
             if (job.IsStopRequested)
             {
-                job.State        = "STOPPED";
                 job.IsStopRequested = false;
-                BackupStatusText = $"'{job.Name}' arrêté.";
+                BackupStatusText    = $"'{job.Name}' arrêté.";
             }
             else
             {
-                job.State        = "STOPPED";
                 BackupProgress   = 10;
                 BackupStatusText = $"'{job.Name}' terminé avec succès.";
                 await Task.Delay(2000);
                 BackupStatusText = "";
             }
 
+            job.State       = "STOPPED";
             ActiveJobName   = "";
             IsBackupRunning = false;
         }
@@ -209,8 +199,8 @@ namespace EasySave.WPF.ViewModels
             job.State            = "STOPPED";
             BackupStatusText     = $"'{job.Name}' arrêté.";
 
-            bool anyStillRunning = JobsList.Any(j => j.State == "RUNNING" || j.State == "PAUSED");
-            if (!anyStillRunning)
+            bool anyStillActive = JobsList.Any(j => j.State == "RUNNING" || j.State == "PAUSED");
+            if (!anyStillActive)
             {
                 IsBackupRunning = false;
                 ActiveJobName   = "";
