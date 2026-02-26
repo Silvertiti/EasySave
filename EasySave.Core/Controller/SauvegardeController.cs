@@ -18,14 +18,20 @@ namespace EasySave.Core.Controller
         private static readonly Mutex _cryptoMutex = new Mutex(false, "CryptoSoftGlobalMutex");
         private static int _globalPriorityFilesCount = 0;
         private static readonly object _priorityLock = new object();
+
         public List<ModelJob> myJobs;
+        public bool IsPausedRequested { get; set; } = false;
+
+        // Flag d'arrêt immédiat (bouton Stop)
+        public bool IsStopRequested { get; set; } = false;
+
         SettingsManager settingsManager = new SettingsManager();
         BusinessSoftwareService businessSoftwareService = new BusinessSoftwareService();
         JobManager jobManager = new JobManager();
         private string stateFile = "state.json";
-        public bool IsPausedRequested { get; set; } = false;
 
         public SauvegardeController() { myJobs = jobManager.LoadData(); }
+
         public void AddJob(ModelJob newJob) { myJobs.Add(newJob); jobManager.SaveData(myJobs); }
 
         public void DeleteJob(int index)
@@ -51,7 +57,7 @@ namespace EasySave.Core.Controller
                 startInfo.CreateNoWindow = true;
                 startInfo.UseShellExecute = false;
 
-                _cryptoMutex.WaitOne(); 
+                _cryptoMutex.WaitOne();
                 try
                 {
                     using (Process exeProcess = Process.Start(startInfo))
@@ -85,16 +91,22 @@ namespace EasySave.Core.Controller
 
         public void ExecuterUnSeulJob(ModelJob job, Action<string> uiCallback)
         {
-            job.State = "ACTIF"; 
+            // NE PAS toucher à job.State ici : le ViewModel gère les états visuels (RUNNING/PAUSED/STOPPED)
             var settings = settingsManager.GetSettings();
 
             try
             {
                 uiCallback("Lancement : " + job.Name);
-                if (!Directory.Exists(job.Source)) { uiCallback("ERREUR : Source introuvable."); job.State = "ERREUR"; return; }
+
+                if (!Directory.Exists(job.Source))
+                {
+                    uiCallback("ERREUR : Source introuvable.");
+                    return;
+                }
 
                 string[] allFiles = Directory.GetFiles(job.Source, "*.*", SearchOption.AllDirectories);
                 int totalFiles = allFiles.Length;
+
                 string prioExtStr = string.IsNullOrEmpty(settings.PrioritizedExtensions) ? "pdf,txt" : settings.PrioritizedExtensions;
                 List<string> priorityExtensions = prioExtStr.Split(',').Select(e => e.Trim().ToLower()).ToList();
 
@@ -106,59 +118,68 @@ namespace EasySave.Core.Controller
                     if (priorityExtensions.Contains(ext)) priorityFiles.Add(file);
                     else normalFiles.Add(file);
                 }
+
                 lock (_priorityLock) { _globalPriorityFilesCount += priorityFiles.Count; }
 
-                long totalSize = 0;
-                foreach (string f in allFiles) totalSize += new FileInfo(f).Length;
-                
+                long totalSize = allFiles.Sum(f => new FileInfo(f).Length);
                 int filesLeft = totalFiles;
                 long sizeLeft = totalSize;
-                
+
                 UpdateEtat(job.Name, job.Source, job.Target, "ACTIF", totalFiles, totalSize, filesLeft, sizeLeft);
-                List<string> extensionsToEncrypt = settings.ExtensionsToEncrypt.Split(',').Select(e => e.Trim().ToLower()).ToList();
-                
+
+                List<string> extensionsToEncrypt = settings.ExtensionsToEncrypt
+                    .Split(',').Select(e => e.Trim().ToLower()).ToList();
+
                 void ProcessFile(string file, bool isPriority)
                 {
-                    if (IsPausedRequested)
+                    // --- Arrêt immédiat demandé (bouton Stop) ---
+                    if (IsStopRequested) return;
+
+                    // --- Pause : on attend que IsPausedRequested repasse à false ---
+                    while (IsPausedRequested)
                     {
-                        job.State = "PAUSE";
+                        if (IsStopRequested) return;
                         UpdateEtat(job.Name, file, "", "PAUSE", totalFiles, totalSize, filesLeft, sizeLeft);
-                        uiCallback("PAUSE : " + job.Name);
+                        Thread.Sleep(300);
                     }
+
+                    // --- Attente logiciel métier ---
                     while (businessSoftwareService.IsBusinessSoftRunning())
                     {
-                        job.State = "ATTENTE METIER";
+                        if (IsStopRequested) return;
                         UpdateEtat(job.Name, file, "", "ATTENTE METIER", totalFiles, totalSize, filesLeft, sizeLeft);
-                        Thread.Sleep(1000); 
+                        Thread.Sleep(1000);
                     }
-                    job.State = "ACTIF";
 
+                    // --- Attente fichiers prioritaires ---
                     if (!isPriority)
                     {
                         while (true)
                         {
                             lock (_priorityLock) { if (_globalPriorityFilesCount == 0) break; }
-                            job.State = "ATTENTE PRIORITE";
+                            if (IsStopRequested) return;
                             UpdateEtat(job.Name, file, "", "ATTENTE PRIORITE", totalFiles, totalSize, filesLeft, sizeLeft);
                             Thread.Sleep(500);
                         }
-                        job.State = "ACTIF";
                     }
 
                     string relatif = file.Replace(job.Source, "").TrimStart('\\');
                     string dest = Path.Combine(job.Target, relatif);
                     long fileSize = new FileInfo(file).Length;
-                    
+
+                    // Sauvegarde différentielle : on saute si le fichier destination est plus récent
                     if (!job.IsFull && File.Exists(dest) && File.GetLastWriteTime(file) <= File.GetLastWriteTime(dest))
                     {
-                        filesLeft--; sizeLeft -= fileSize;
+                        filesLeft--;
+                        sizeLeft -= fileSize;
                         UpdateEtat(job.Name, file, dest, "ACTIF", totalFiles, totalSize, filesLeft, sizeLeft);
-                        if (isPriority) lock (_priorityLock) { _globalPriorityFilesCount--; } 
+                        if (isPriority) lock (_priorityLock) { _globalPriorityFilesCount--; }
                         return;
                     }
 
                     string? dirDest = Path.GetDirectoryName(dest);
-                    if (!string.IsNullOrEmpty(dirDest) && !Directory.Exists(dirDest)) Directory.CreateDirectory(dirDest);
+                    if (!string.IsNullOrEmpty(dirDest) && !Directory.Exists(dirDest))
+                        Directory.CreateDirectory(dirDest);
 
                     UpdateEtat(job.Name, file, dest, "ACTIF", totalFiles, totalSize, filesLeft, sizeLeft);
 
@@ -168,28 +189,19 @@ namespace EasySave.Core.Controller
 
                     try
                     {
-                        Action processFileInner = () => 
+                        Action copyAndEncrypt = () =>
                         {
                             File.Copy(file, dest, true);
                             Thread.Sleep(2000);
                             string ext = Path.GetExtension(dest).ToLower().Replace(".", "");
                             if (extensionsToEncrypt.Contains(ext))
-                            {
                                 encryptionTime = ExecuteCryptoSoft(dest);
-                            }
                         };
 
                         if (isLargeFile)
-                        {
-                            lock (_largeFileLock)
-                            {
-                                processFileInner();
-                            }
-                        }
+                            lock (_largeFileLock) { copyAndEncrypt(); }
                         else
-                        {
-                            processFileInner();
-                        }
+                            copyAndEncrypt();
 
                         sw.Stop();
                         LogManager.SaveLog(job.Name, file, dest, fileSize, sw.Elapsed.TotalMilliseconds, encryptionTime);
@@ -205,41 +217,45 @@ namespace EasySave.Core.Controller
                         if (isPriority) lock (_priorityLock) { _globalPriorityFilesCount--; }
                     }
 
-                    filesLeft--; sizeLeft -= fileSize;
+                    filesLeft--;
+                    sizeLeft -= fileSize;
                     uiCallback("Copié : " + relatif);
                 }
-                
+
                 foreach (string file in priorityFiles) ProcessFile(file, true);
                 foreach (string file in normalFiles) ProcessFile(file, false);
 
-                UpdateEtat(job.Name, "", "", "INACTIF", totalFiles, totalSize, 0, 0);
-                job.State = "TERMINÉ";
-                uiCallback("Succès : " + job.Name);
+                // Ne mettre à jour l'état que si pas d'arrêt demandé
+                if (!IsStopRequested)
+                {
+                    UpdateEtat(job.Name, "", "", "INACTIF", totalFiles, totalSize, 0, 0);
+                    uiCallback("Succès : " + job.Name);
+                }
             }
-            catch (Exception ex) 
-            { 
-                job.State = "ERREUR";
-                uiCallback("ERREUR CRITIQUE : " + ex.Message); 
+            catch (Exception ex)
+            {
+                uiCallback("ERREUR CRITIQUE : " + ex.Message);
             }
         }
 
-        private void UpdateEtat(string jobName, string src, string dest, string state, int totalF, long totalS, int leftF, long leftS)
-{
-    try
-    {
-        int prog = (totalF > 0) ? 100 - (leftF * 100 / totalF) : 100;
-        ModelEtat etat = new ModelEtat()
+        private void UpdateEtat(string jobName, string src, string dest, string state,
+            int totalF, long totalS, int leftF, long leftS)
         {
-            Name = jobName, SourceFile = src, TargetFile = dest, State = state,
-            TotalFiles = totalF, TotalSize = totalS, FilesLeft = leftF, SizeLeft = leftS,
-            Progression = prog, Timestamp = DateTime.Now.ToString("dd/MM/yyyy HH:mm:ss")
-        };
-        lock (_stateLock)
-        {
-            File.WriteAllText(stateFile, JsonConvert.SerializeObject(etat, Formatting.Indented));
+            try
+            {
+                int prog = (totalF > 0) ? 100 - (leftF * 100 / totalF) : 100;
+                ModelEtat etat = new ModelEtat()
+                {
+                    Name = jobName, SourceFile = src, TargetFile = dest, State = state,
+                    TotalFiles = totalF, TotalSize = totalS, FilesLeft = leftF, SizeLeft = leftS,
+                    Progression = prog, Timestamp = DateTime.Now.ToString("dd/MM/yyyy HH:mm:ss")
+                };
+                lock (_stateLock)
+                {
+                    File.WriteAllText(stateFile, JsonConvert.SerializeObject(etat, Formatting.Indented));
+                }
+            }
+            catch { }
         }
-    }
-    catch { }
-}
     }
 }

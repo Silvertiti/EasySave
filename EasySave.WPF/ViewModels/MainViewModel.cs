@@ -21,14 +21,12 @@ namespace EasySave.WPF.ViewModels
         public string BtnDeleteAllText { get; set; }
         public string BtnSettingsText { get; set; }
 
-        // Serveur
         private BackupServer _server = new BackupServer();
         [ObservableProperty] private bool _isServerRunning = false;
         [ObservableProperty] private string _serverLog = "";
 
-        // Progression Sauvegarde
         [ObservableProperty] private bool _isBackupRunning = false;
-        [ObservableProperty] private int _backupProgress = 0; // 0 à 10
+        [ObservableProperty] private int _backupProgress = 0;
         [ObservableProperty] private string _backupStatusText = "";
         [ObservableProperty] private string _activeJobName = "";
 
@@ -46,7 +44,7 @@ namespace EasySave.WPF.ViewModels
 
             _server.OnLog += msg => Application.Current.Dispatcher.Invoke(() => AppendLog(msg));
 
-            // Synchronisation basique universelle en lisant state.json
+            // Polling state.json uniquement pour la barre de progression
             Task.Run(async () =>
             {
                 while (true)
@@ -58,44 +56,12 @@ namespace EasySave.WPF.ViewModels
                         {
                             var json = File.ReadAllText("state.json");
                             var etat = Newtonsoft.Json.JsonConvert.DeserializeObject<ModelEtat>(json);
-
                             Application.Current.Dispatcher.Invoke(() =>
                             {
                                 if (etat != null && etat.State != "INACTIF")
                                 {
-                                    IsBackupRunning = true;
                                     BackupProgress = etat.Progression / 10;
                                     ActiveJobName = etat.Name;
-                                    
-                                    var job = JobsList.FirstOrDefault(j => j.Name == etat.Name);
-                                    if (job != null)
-                                    {
-                                        job.State = etat.State == "PAUSE" ? "PAUSED" : "RUNNING";
-                                    }
-                                }
-                                else
-                                {
-                                    // Etat inactif -> s'assurer que les jobs sont arrêtés visuellement
-                                    bool wasRunningExternally = false;
-                                    foreach (var j in JobsList)
-                                    {
-                                        if (j.State != "STOPPED") 
-                                        { 
-                                            j.State = "STOPPED"; 
-                                            wasRunningExternally = true; 
-                                        }
-                                    }
-
-                                    // Si la tâche tournait mais sans passer par le bloc local "RunJob" final
-                                    if (IsBackupRunning && wasRunningExternally && !BackupStatusText.Contains("terminé") && !BackupStatusText.Contains("Arrêt"))
-                                    {
-                                        BackupProgress = 10;
-                                        BackupStatusText = "Sauvegarde terminée !";
-                                        Task.Run(async () => { 
-                                            await Task.Delay(2000); 
-                                            Application.Current.Dispatcher.Invoke(() => { IsBackupRunning = false; ActiveJobName = ""; }); 
-                                        });
-                                    }
                                 }
                             });
                         }
@@ -124,17 +90,11 @@ namespace EasySave.WPF.ViewModels
         private void AppendLog(string msg)
         {
             var lines = (ServerLog + "\n" + msg).Split('\n');
-            if (lines.Length > 20)
-                ServerLog = string.Join("\n", lines[^20..]);
-            else
-                ServerLog = string.Join("\n", lines);
+            ServerLog = string.Join("\n", lines.Length > 20 ? lines[^20..] : lines);
         }
 
         public string SendClientCommand(string host, int port, string command)
-        {
-            var client = new BackupClient(host, port);
-            return client.SendCommand(command);
-        }
+            => new BackupClient(host, port).SendCommand(command);
 
         public async void RunAllSave()
         {
@@ -143,20 +103,21 @@ namespace EasySave.WPF.ViewModels
 
             IsBackupRunning = true;
             _model.IsPausedRequested = false;
+            _model.IsStopRequested = false;
             BackupProgress = 0;
             BackupStatusText = "Initialisation...";
+
+            foreach (var j in JobsList) j.State = "RUNNING";
 
             await Task.Run(() =>
             {
                 _model.ExecuterSauvegarde(msg =>
                 {
-                    Application.Current.Dispatcher.Invoke(() => {
+                    Application.Current.Dispatcher.Invoke(() =>
+                    {
                         BackupStatusText = msg;
-
-                        // Extraire le nom du job si le message commence par "Lancement : "
                         if (msg.StartsWith("Lancement : "))
                             ActiveJobName = msg.Replace("Lancement : ", "").Trim();
-
                         if (msg.Contains("STOP") || msg.Contains("INTERRUPTION"))
                             MessageBox.Show(msg, "Arrêt", MessageBoxButton.OK, MessageBoxImage.Warning);
                         else if (msg.Contains("ERREUR"))
@@ -165,40 +126,47 @@ namespace EasySave.WPF.ViewModels
                 });
             });
 
+            foreach (var j in JobsList) j.State = "STOPPED";
             ActiveJobName = "";
             BackupProgress = 10;
             BackupStatusText = "Sauvegarde terminée !";
             await Task.Delay(2000);
             IsBackupRunning = false;
+            BackupStatusText = "";
         }
 
         public async void RunJob(ModelJob job)
         {
             if (job == null) return;
 
+            // RUNNING → on met en pause
             if (job.State == "RUNNING")
             {
                 _model.IsPausedRequested = true;
+                job.State = "PAUSED";
+                BackupStatusText = $"'{job.Name}' en pause.";
                 return;
             }
 
-            // Si une backup tourne, on interdit d'en lancer une nouvelle SAUF si on clique sur un job en pause pour le relancer
+            // Un autre job tourne déjà et celui-ci n'est pas en pause → on bloque
             if (IsBackupRunning && job.State != "PAUSED") return;
 
+            // Démarrage ou reprise
             IsBackupRunning = true;
             _model.IsPausedRequested = false;
-            job.State = "RUNNING";
+            _model.IsStopRequested = false;
+            job.State = "RUNNING";   // ← ViewModel pose l'état, le controller ne le touche plus
             BackupProgress = 0;
             BackupStatusText = $"Lancement de {job.Name}...";
+            ActiveJobName = job.Name;
 
             await Task.Run(() =>
             {
                 _model.ExecuterUnSeulJob(job, msg =>
                 {
-                    Application.Current.Dispatcher.Invoke(() => {
+                    Application.Current.Dispatcher.Invoke(() =>
+                    {
                         BackupStatusText = msg;
-                        ActiveJobName = job.Name;
-
                         if (msg.Contains("STOP") || msg.Contains("INTERRUPTION"))
                             MessageBox.Show(msg, "Arrêt", MessageBoxButton.OK, MessageBoxImage.Warning);
                         else if (msg.Contains("ERREUR"))
@@ -207,22 +175,47 @@ namespace EasySave.WPF.ViewModels
                 });
             });
 
-            ActiveJobName = "";
-            bool wasPaused = _model.IsPausedRequested;
-            job.State = wasPaused ? "PAUSED" : "STOPPED";
-
-            if (wasPaused) 
+            // Fin du Task.Run : on détermine l'état final
+            if (_model.IsStopRequested)
             {
-                 BackupStatusText = $"'{job.Name}' en pause.";
-            } 
-            else 
-            {
-                 BackupProgress = 10;
-                 BackupStatusText = $"'{job.Name}' terminé avec succès.";
+                // Arrêt forcé par le bouton Stop
+                job.State = "STOPPED";
+                IsBackupRunning = false;
+                ActiveJobName = "";
+                BackupStatusText = $"'{job.Name}' arrêté.";
+                _model.IsStopRequested = false;
             }
+            else if (_model.IsPausedRequested)
+            {
+                // Pause en cours
+                job.State = "PAUSED";
+                BackupStatusText = $"'{job.Name}' en pause. Cliquez sur ▶ pour reprendre.";
+            }
+            else
+            {
+                // Terminé normalement
+                job.State = "STOPPED";
+                ActiveJobName = "";
+                BackupProgress = 10;
+                BackupStatusText = $"'{job.Name}' terminé avec succès.";
+                await Task.Delay(2000);
+                IsBackupRunning = false;
+                BackupStatusText = "";
+            }
+        }
 
-            await Task.Delay(2000);
+        /// <summary>Arrêt immédiat d'un job (bouton Stop rouge).</summary>
+        public void StopJob(ModelJob job)
+        {
+            if (job == null) return;
+            if (job.State != "RUNNING" && job.State != "PAUSED") return;
+
+            _model.IsStopRequested = true;
+            _model.IsPausedRequested = false;
+            job.State = "STOPPED";
             IsBackupRunning = false;
+            ActiveJobName = "";
+            BackupStatusText = $"'{job.Name}' arrêté.";
         }
 
         public void DeleteJob(ModelJob job)
@@ -249,10 +242,7 @@ namespace EasySave.WPF.ViewModels
         }
 
         [RelayCommand]
-        public void OpenSettings()
-        {
-            new FenetreParametres().ShowDialog();
-        }
+        public void OpenSettings() => new FenetreParametres().ShowDialog();
 
         private string GetTxt(string key, string def) => LangGUI.Msg.ContainsKey(key) ? LangGUI.Msg[key] : def;
         private string CleanTranslation(string raw) => raw.Contains(".") ? raw.Substring(raw.IndexOf('.') + 1).Trim() : raw.Trim();

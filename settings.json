@@ -1,7 +1,8 @@
 {
   "ExtensionsToEncrypt": "txt,docx,xlsx",
-  "BusinessSoftware": "calc",
+  "BusinessSoftware": "notepad",
   "LogFormat": "json",
-  "CryptoSoftPath": "",
-  "MaxParallelFileSizeKb": 200
+  "CryptoSoftPath": "F:\\CESI\\ALTERNANCE 2025-2028\\ALTERNANCE 2025-2026\\Projet EasySave\\CryptoSoft\\bin\\Debug\\net8.0\\win-x64\\CryptoSoft.exe",
+  "MaxParallelFileSizeKb": 200,
+  "PrioritizedExtensions": "pdf,txt,docx"
 }
