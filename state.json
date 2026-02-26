@@ -1,12 +1,12 @@
 {
   "Name": "2",
-  "SourceFile": "",
+  "SourceFile": "F:\\CESI\\ALTERNANCE 2025-2028\\ALTERNANCE 2025-2026\\Projet EasySave\\test source 2\\test.txt",
   "TargetFile": "",
-  "State": "INACTIF",
-  "TotalFiles": 0,
-  "TotalSize": 0,
-  "FilesLeft": 0,
-  "SizeLeft": 0,
-  "Progression": 100,
-  "Timestamp": "26/02/2026 22:26:28"
+  "State": "PAUSE",
+  "TotalFiles": 3,
+  "TotalSize": 991924,
+  "FilesLeft": 2,
+  "SizeLeft": 181048,
+  "Progression": 34,
+  "Timestamp": "26/02/2026 22:38:16"
 }
