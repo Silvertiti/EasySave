@@ -6,11 +6,13 @@ using System.Linq;
 using Newtonsoft.Json;
 using EasySave.Core.Models;
 using EasySave.Core.Services;
+using System.Threading;
 
 namespace EasySave.Core.Controller
 {
     public class SauvegardeController
     {
+        private static readonly object _largeFileLock = new object();
         public List<ModelJob> myJobs;
         SettingsManager settingsManager = new SettingsManager();
         BusinessSoftwareService businessSoftwareService = new BusinessSoftwareService();
@@ -153,13 +155,30 @@ namespace EasySave.Core.Controller
                     Stopwatch sw = Stopwatch.StartNew();
                     double encryptionTime = 0;
 
+                    bool isLargeFile = (settings.MaxParallelFileSizeKb > 0) && (fileSize > settings.MaxParallelFileSizeKb * 1024);
+
                     try
                     {
-                        File.Copy(file, dest, true);
-                        string ext = Path.GetExtension(dest).ToLower().Replace(".", "");
-                        if (extensionsToEncrypt.Contains(ext))
+                        Action processFile = () => 
                         {
-                            encryptionTime = ExecuteCryptoSoft(dest);
+                            File.Copy(file, dest, true);
+                            string ext = Path.GetExtension(dest).ToLower().Replace(".", "");
+                            if (extensionsToEncrypt.Contains(ext))
+                            {
+                                encryptionTime = ExecuteCryptoSoft(dest);
+                            }
+                        };
+
+                        if (isLargeFile)
+                        {
+                            lock (_largeFileLock)
+                            {
+                                processFile();
+                            }
+                        }
+                        else
+                        {
+                            processFile();
                         }
 
                         sw.Stop();
