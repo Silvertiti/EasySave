@@ -149,10 +149,29 @@ pre{{background:#222; padding:20px; border-radius:8px; border:1px solid #333; ov
 a{{color:#4af;text-decoration:none; font-family:Arial; display:block; text-align:center; margin-top:20px;}} 
 a:hover{{text-decoration:underline;}}
 </style>
+<script>
+const dictLogs = {{
+  'fr': {{ title: ""Journaux de bord (Logs du jour)"", back: ""Retour au moniteur"", noLog: ""Aucun log pour aujourd'hui."" }},
+  'en': {{ title: ""Daily Logs"", back: ""Back to monitor"", noLog: ""No logs for today."" }}
+}};
+
+function changeLangLogs(l) {{
+    document.getElementById('logTitle').innerText = dictLogs[l].title;
+    document.getElementById('backBtn').innerText = dictLogs[l].back;
+    let preElt = document.getElementById('logContent');
+    if (preElt.innerText === dictLogs['fr'].noLog || preElt.innerText === dictLogs['en'].noLog) {{
+        preElt.innerText = dictLogs[l].noLog;
+    }}
+}}
+</script>
 </head><body>
-<h2>Journaux de bord (Logs du jour)</h2>
-<pre>{logContent}</pre>
-<a href=""/"">Retour au moniteur</a>
+<select onchange=""changeLangLogs(this.value)"" style=""position:absolute; top:15px; right:15px; background:#222; color:#eee; border:1px solid #444; padding:5px; border-radius:4px;"">
+    <option value=""fr"">Français</option>
+    <option value=""en"">English</option>
+</select>
+<h2 id=""logTitle"">Journaux de bord (Logs du jour)</h2>
+<pre id=""logContent"">{logContent}</pre>
+<a href=""/"" id=""backBtn"">Retour au moniteur</a>
 </body></html>";
 
                     writer.WriteLine("Content-Type: text/html; charset=utf-8");
@@ -191,9 +210,27 @@ body{{font-family:Arial;background:#111;color:#eee;text-align:center;padding:40p
 a{{color:#4af;text-decoration:none;}} a:hover{{text-decoration:underline;}}
 </style>
 <script>
+const dict = {{
+  'fr': {{ title: ""EasySave Server"", ready: ""Prêt"", runAll: ""Tout lancer"", viewLogs: ""Voir les logs du jour"", play: ""Play"", pause: ""Pause"", resume: ""Reprendre"" }},
+  'en': {{ title: ""EasySave Server"", ready: ""Ready"", runAll: ""Run All"", viewLogs: ""View Today's Logs"", play: ""Play"", pause: ""Pause"", resume: ""Resume"" }}
+}};
+let curLang = 'fr';
+
+function changeLang(l) {{
+    curLang = l;
+    document.getElementById('title').innerText = dict[l].title;
+    document.getElementById('runAllBtn').innerText = dict[l].runAll;
+    document.getElementById('viewLogsBtn').innerText = dict[l].viewLogs;
+    
+    let prog = document.getElementById('progText');
+    if(prog.innerText === dict[l === 'fr' ? 'en' : 'fr'].ready) {{
+        prog.innerText = dict[l].ready;
+    }}
+}}
+
 function actionJob(name) {{
     let btn = document.getElementById('btn_' + name);
-    if (btn.innerText === 'Pause') {{
+    if (btn.innerText === dict[curLang].pause) {{
         fetch('/pause');
     }} else {{
         fetch('/run-job?name=' + encodeURIComponent(name));
@@ -202,9 +239,11 @@ function actionJob(name) {{
 
 setInterval(() => {{
   fetch('/status').then(r => r.json()).then(data => {{
-    // Reset all buttons graphically
     document.querySelectorAll('.btn').forEach(b => {{
-        if(b.innerText === 'Pause') {{ b.innerText = 'Play'; b.className = 'btn btn-play'; }}
+        if(b.innerText === dict['fr'].pause || b.innerText === dict['en'].pause) {{ 
+            b.innerText = dict[curLang].play; 
+            b.className = 'btn btn-play'; 
+        }}
     }});
 
     if(data.State && data.State !== 'INACTIF') {{
@@ -217,22 +256,26 @@ setInterval(() => {{
        let activeBtn = document.getElementById('btn_' + data.Name);
        if (activeBtn) {{
            if (data.State === 'PAUSE') {{
-               activeBtn.innerText = 'Reprendre';
+               activeBtn.innerText = dict[curLang].resume;
                activeBtn.className = 'btn btn-play';
            }} else {{
-               activeBtn.innerText = 'Pause';
+               activeBtn.innerText = dict[curLang].pause;
                activeBtn.className = 'btn btn-pause';
            }}
        }}
     }} else {{
-       document.getElementById('progText').innerText = 'Prêt';
+       document.getElementById('progText').innerText = dict[curLang].ready;
        for(let i=1; i<=10; i++) document.getElementById('block'+i).className = 'block';
     }}
   }}).catch(() => {{}});
 }}, 1000);
 </script>
 </head><body>
-<h2>EasySave Server</h2>
+<select onchange=""changeLang(this.value)"" style=""position:absolute; top:15px; right:15px; background:#222; color:#eee; border:1px solid #444; padding:5px; border-radius:4px;"">
+    <option value=""fr"">Français</option>
+    <option value=""en"">English</option>
+</select>
+<h2 id=""title"">EasySave Server</h2>
 
 <div class=""blocks"">
     <div class=""block"" id=""block1""></div><div class=""block"" id=""block2""></div><div class=""block"" id=""block3""></div><div class=""block"" id=""block4""></div><div class=""block"" id=""block5""></div><div class=""block"" id=""block6""></div><div class=""block"" id=""block7""></div><div class=""block"" id=""block8""></div><div class=""block"" id=""block9""></div><div class=""block"" id=""block10""></div>
@@ -243,8 +286,8 @@ setInterval(() => {{
     {jobsHtml}
 </div>
 
-<a href=""#"" onclick=""fetch('/run')"">Tout lancer</a> | 
-<a href=""/logs"" target=""_blank"">Voir les logs du jour</a>
+<a href=""#"" id=""runAllBtn"" onclick=""fetch('/run')"">Tout lancer</a> | 
+<a href=""/logs"" id=""viewLogsBtn"" target=""_blank"">Voir les logs du jour</a>
 </body></html>";
                     writer.WriteLine("Content-Type: text/html; charset=utf-8");
                     writer.WriteLine($"Content-Length: {Encoding.UTF8.GetByteCount(html)}");
