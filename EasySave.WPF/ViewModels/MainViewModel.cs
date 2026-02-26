@@ -14,37 +14,36 @@ namespace EasySave.WPF.ViewModels
     {
         public ObservableCollection<ModelJob> JobsList { get; set; }
         public SauvegardeController _model;
-        public string Title { get; set; }
-        public string LblMenu { get; set; }
-        public string BtnAddText { get; set; }
-        public string BtnRunText { get; set; }
+        public string Title          { get; set; }
+        public string LblMenu        { get; set; }
+        public string BtnAddText     { get; set; }
+        public string BtnRunText     { get; set; }
         public string BtnDeleteAllText { get; set; }
-        public string BtnSettingsText { get; set; }
+        public string BtnSettingsText  { get; set; }
 
         private BackupServer _server = new BackupServer();
-        [ObservableProperty] private bool _isServerRunning = false;
-        [ObservableProperty] private string _serverLog = "";
-
-        [ObservableProperty] private bool _isBackupRunning = false;
-        [ObservableProperty] private int _backupProgress = 0;
+        [ObservableProperty] private bool   _isServerRunning  = false;
+        [ObservableProperty] private string _serverLog        = "";
+        [ObservableProperty] private bool   _isBackupRunning  = false;
+        [ObservableProperty] private int    _backupProgress   = 0;
         [ObservableProperty] private string _backupStatusText = "";
-        [ObservableProperty] private string _activeJobName = "";
+        [ObservableProperty] private string _activeJobName    = "";
 
         public MainViewModel()
         {
-            _model = new SauvegardeController();
-            JobsList = new ObservableCollection<ModelJob>(_model.myJobs);
-            Title = GetTxt("MenuTitle", "EasySave Dashboard").Replace("\n", "").Replace("-", "").Trim();
-            LblMenu = GetTxt("MenuLabel", "MENU");
-            BtnAddText = CleanTranslation(GetTxt("Add", "Ajouter"));
-            BtnRunText = CleanTranslation(GetTxt("Run", "Tout Lancer"));
+            _model    = new SauvegardeController();
+            JobsList  = new ObservableCollection<ModelJob>(_model.myJobs);
+            Title     = GetTxt("MenuTitle", "EasySave Dashboard").Replace("\n","").Replace("-","").Trim();
+            LblMenu   = GetTxt("MenuLabel", "MENU");
+            BtnAddText     = CleanTranslation(GetTxt("Add",       "Ajouter"));
+            BtnRunText     = CleanTranslation(GetTxt("Run",       "Tout Lancer"));
             if (BtnRunText.ToUpper().Contains("LANCER")) BtnRunText = "Tout Lancer";
             BtnDeleteAllText = CleanTranslation(GetTxt("DeleteAll", "Tout Supprimer"));
-            BtnSettingsText = "⚙  " + GetTxt("Settings", "Paramètres");
+            BtnSettingsText  = "⚙  " + GetTxt("Settings", "Paramètres");
 
             _server.OnLog += msg => Application.Current.Dispatcher.Invoke(() => AppendLog(msg));
 
-            // Polling state.json uniquement pour la barre de progression
+            // Polling state.json uniquement pour la barre de progression globale
             Task.Run(async () =>
             {
                 while (true)
@@ -61,7 +60,7 @@ namespace EasySave.WPF.ViewModels
                                 if (etat != null && etat.State != "INACTIF")
                                 {
                                     BackupProgress = etat.Progression / 10;
-                                    ActiveJobName = etat.Name;
+                                    ActiveJobName  = etat.Name;
                                 }
                             });
                         }
@@ -71,6 +70,7 @@ namespace EasySave.WPF.ViewModels
             });
         }
 
+        // ── Serveur ───────────────────────────────────────────────────────
         public void ToggleServer()
         {
             if (_server.IsRunning)
@@ -80,11 +80,7 @@ namespace EasySave.WPF.ViewModels
                 _server.OnLog += msg => Application.Current.Dispatcher.Invoke(() => AppendLog(msg));
                 IsServerRunning = false;
             }
-            else
-            {
-                _server.Start(_model);
-                IsServerRunning = true;
-            }
+            else { _server.Start(_model); IsServerRunning = true; }
         }
 
         private void AppendLog(string msg)
@@ -96,131 +92,146 @@ namespace EasySave.WPF.ViewModels
         public string SendClientCommand(string host, int port, string command)
             => new BackupClient(host, port).SendCommand(command);
 
+        // ── Tout lancer ───────────────────────────────────────────────────
         public async void RunAllSave()
         {
             if (JobsList.Count == 0) { MessageBox.Show("Liste vide", "Info"); return; }
-            if (IsBackupRunning && !_model.IsPausedRequested) return;
 
-            IsBackupRunning = true;
-            _model.IsPausedRequested = false;
-            _model.IsStopRequested = false;
-            BackupProgress = 0;
-            BackupStatusText = "Initialisation...";
-
-            foreach (var j in JobsList) j.State = "RUNNING";
-
-            await Task.Run(() =>
+            // Réinitialiser les flags de chaque job et les marquer RUNNING
+            foreach (var j in JobsList)
             {
-                _model.ExecuterSauvegarde(msg =>
-                {
+                j.IsPauseRequested = false;
+                j.IsStopRequested  = false;
+                j.State            = "RUNNING";
+            }
+
+            IsBackupRunning  = true;
+            BackupProgress   = 0;
+            BackupStatusText = "Lancement de tous les jobs...";
+
+            // On lance chaque job dans sa propre tâche pour pouvoir les contrôler indépendamment
+            var tasks = JobsList.Select(job => Task.Run(() =>
+                _model.ExecuterUnSeulJob(job, msg =>
                     Application.Current.Dispatcher.Invoke(() =>
                     {
                         BackupStatusText = msg;
-                        if (msg.StartsWith("Lancement : "))
-                            ActiveJobName = msg.Replace("Lancement : ", "").Trim();
-                        if (msg.Contains("STOP") || msg.Contains("INTERRUPTION"))
-                            MessageBox.Show(msg, "Arrêt", MessageBoxButton.OK, MessageBoxImage.Warning);
-                        else if (msg.Contains("ERREUR"))
+                        if (msg.Contains("ERREUR"))
                             MessageBox.Show(msg, "Erreur", MessageBoxButton.OK, MessageBoxImage.Error);
-                    });
-                });
-            });
+                    })
+                )
+            )).ToList();
 
-            foreach (var j in JobsList) j.State = "STOPPED";
-            ActiveJobName = "";
-            BackupProgress = 10;
-            BackupStatusText = "Sauvegarde terminée !";
+            await Task.WhenAll(tasks);
+
+            // Fin : mettre à jour l'état visuel de chaque job
+            foreach (var j in JobsList)
+            {
+                if (j.State == "RUNNING") // pas encore modifié par Stop/Pause
+                    j.State = "STOPPED";
+            }
+
+            ActiveJobName    = "";
+            BackupProgress   = 10;
+            BackupStatusText = "Tous les jobs terminés !";
             await Task.Delay(2000);
-            IsBackupRunning = false;
+            IsBackupRunning  = false;
             BackupStatusText = "";
         }
 
+        // ── Lancer / Pause / Reprendre un job individuel ──────────────────
         public async void RunJob(ModelJob job)
         {
             if (job == null) return;
 
-            // RUNNING → on met en pause
+            // RUNNING → Pause
             if (job.State == "RUNNING")
             {
-                _model.IsPausedRequested = true;
-                job.State = "PAUSED";
-                BackupStatusText = $"'{job.Name}' en pause.";
+                job.IsPauseRequested = true;
+                job.State            = "PAUSED";
+                BackupStatusText     = $"'{job.Name}' en pause.";
                 return;
             }
 
-            // Un autre job tourne déjà et celui-ci n'est pas en pause → on bloque
-            if (IsBackupRunning && job.State != "PAUSED") return;
+            // PAUSED → Reprise
+            if (job.State == "PAUSED")
+            {
+                job.IsPauseRequested = false;
+                job.IsStopRequested  = false;
+                job.State            = "RUNNING";
+                BackupStatusText     = $"Reprise de '{job.Name}'...";
+                // Le thread du controller est encore en vie et attend IsPauseRequested == false
+                // → il reprend automatiquement, pas besoin de relancer ExecuterUnSeulJob
+                return;
+            }
 
-            // Démarrage ou reprise
-            IsBackupRunning = true;
-            _model.IsPausedRequested = false;
-            _model.IsStopRequested = false;
-            job.State = "RUNNING";   // ← ViewModel pose l'état, le controller ne le touche plus
-            BackupProgress = 0;
-            BackupStatusText = $"Lancement de {job.Name}...";
-            ActiveJobName = job.Name;
+            // STOPPED → Démarrage normal
+            // Si un job solo tourne déjà, on bloque
+            if (IsBackupRunning) return;
+
+            IsBackupRunning      = true;
+            job.IsPauseRequested = false;
+            job.IsStopRequested  = false;
+            job.State            = "RUNNING";
+            BackupProgress       = 0;
+            BackupStatusText     = $"Lancement de '{job.Name}'...";
+            ActiveJobName        = job.Name;
 
             await Task.Run(() =>
-            {
                 _model.ExecuterUnSeulJob(job, msg =>
-                {
                     Application.Current.Dispatcher.Invoke(() =>
                     {
                         BackupStatusText = msg;
-                        if (msg.Contains("STOP") || msg.Contains("INTERRUPTION"))
-                            MessageBox.Show(msg, "Arrêt", MessageBoxButton.OK, MessageBoxImage.Warning);
-                        else if (msg.Contains("ERREUR"))
+                        if (msg.Contains("ERREUR"))
                             MessageBox.Show(msg, "Erreur", MessageBoxButton.OK, MessageBoxImage.Error);
-                    });
-                });
-            });
+                    })
+                )
+            );
 
-            // Fin du Task.Run : on détermine l'état final
-            if (_model.IsStopRequested)
+            // État final
+            if (job.IsStopRequested)
             {
-                // Arrêt forcé par le bouton Stop
-                job.State = "STOPPED";
-                IsBackupRunning = false;
-                ActiveJobName = "";
+                job.State        = "STOPPED";
+                job.IsStopRequested = false;
                 BackupStatusText = $"'{job.Name}' arrêté.";
-                _model.IsStopRequested = false;
-            }
-            else if (_model.IsPausedRequested)
-            {
-                // Pause en cours
-                job.State = "PAUSED";
-                BackupStatusText = $"'{job.Name}' en pause. Cliquez sur ▶ pour reprendre.";
             }
             else
             {
-                // Terminé normalement
-                job.State = "STOPPED";
-                ActiveJobName = "";
-                BackupProgress = 10;
+                job.State        = "STOPPED";
+                BackupProgress   = 10;
                 BackupStatusText = $"'{job.Name}' terminé avec succès.";
                 await Task.Delay(2000);
-                IsBackupRunning = false;
                 BackupStatusText = "";
             }
+
+            ActiveJobName   = "";
+            IsBackupRunning = false;
         }
 
-        /// <summary>Arrêt immédiat d'un job (bouton Stop rouge).</summary>
+        // ── Stop immédiat d'un job (bouton Stop rouge) ────────────────────
         public void StopJob(ModelJob job)
         {
             if (job == null) return;
             if (job.State != "RUNNING" && job.State != "PAUSED") return;
 
-            _model.IsStopRequested = true;
-            _model.IsPausedRequested = false;
-            job.State = "STOPPED";
-            IsBackupRunning = false;
-            ActiveJobName = "";
-            BackupStatusText = $"'{job.Name}' arrêté.";
+            job.IsStopRequested  = true;
+            job.IsPauseRequested = false;
+            job.State            = "STOPPED";
+            BackupStatusText     = $"'{job.Name}' arrêté.";
+
+            // Si c'était le seul job solo en cours, libérer le verrou global
+            bool anyStillRunning = JobsList.Any(j => j.State == "RUNNING" || j.State == "PAUSED");
+            if (!anyStillRunning)
+            {
+                IsBackupRunning = false;
+                ActiveJobName   = "";
+            }
         }
 
+        // ── CRUD jobs ─────────────────────────────────────────────────────
         public void DeleteJob(ModelJob job)
         {
-            if (MessageBox.Show($"Supprimer {job.Name} ?", "Confirmation", MessageBoxButton.YesNo) == MessageBoxResult.Yes)
+            if (MessageBox.Show($"Supprimer {job.Name} ?", "Confirmation", MessageBoxButton.YesNo)
+                == MessageBoxResult.Yes)
             {
                 int i = _model.myJobs.IndexOf(job);
                 if (i >= 0) { _model.DeleteJob(i); JobsList.Remove(job); }
@@ -237,14 +248,17 @@ namespace EasySave.WPF.ViewModels
         public void DeleteAllJobs()
         {
             if (JobsList.Count == 0) return;
-            if (MessageBox.Show("Supprimer tous les travaux ?", "Confirmation", MessageBoxButton.YesNo) == MessageBoxResult.Yes)
+            if (MessageBox.Show("Supprimer tous les travaux ?", "Confirmation", MessageBoxButton.YesNo)
+                == MessageBoxResult.Yes)
             { _model.DeleteAllJobs(); JobsList.Clear(); }
         }
 
         [RelayCommand]
         public void OpenSettings() => new FenetreParametres().ShowDialog();
 
-        private string GetTxt(string key, string def) => LangGUI.Msg.ContainsKey(key) ? LangGUI.Msg[key] : def;
-        private string CleanTranslation(string raw) => raw.Contains(".") ? raw.Substring(raw.IndexOf('.') + 1).Trim() : raw.Trim();
+        private string GetTxt(string key, string def)
+            => LangGUI.Msg.ContainsKey(key) ? LangGUI.Msg[key] : def;
+        private string CleanTranslation(string raw)
+            => raw.Contains(".") ? raw.Substring(raw.IndexOf('.') + 1).Trim() : raw.Trim();
     }
 }
