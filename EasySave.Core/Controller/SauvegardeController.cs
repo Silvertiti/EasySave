@@ -13,6 +13,7 @@ namespace EasySave.Core.Controller
 {
     public class SauvegardeController
     {
+        private static readonly object _stateLock = new object();
         private static readonly object _largeFileLock = new object();
         private static readonly Mutex _cryptoMutex = new Mutex(false, "CryptoSoftGlobalMutex");
         private static int _globalPriorityFilesCount = 0;
@@ -72,25 +73,25 @@ namespace EasySave.Core.Controller
             }
         }
 
-        public void ExecuterSauvegarde(Action<string> uiCallback)
+        public async Task ExecuterSauvegarde(Action<string> uiCallback)
         {
-            // LIVRABLE 3 : Lancement en parallèle (Task.Run)
             var tasks = new List<Task>();
             foreach (var job in myJobs)
             {
                 tasks.Add(Task.Run(() => ExecuterUnSeulJob(job, uiCallback)));
             }
-            Task.WaitAll(tasks.ToArray());
+            await Task.WhenAll(tasks);
         }
 
         public void ExecuterUnSeulJob(ModelJob job, Action<string> uiCallback)
         {
+            job.State = "ACTIF"; 
             var settings = settingsManager.GetSettings();
 
             try
             {
                 uiCallback("Lancement : " + job.Name);
-                if (!Directory.Exists(job.Source)) { uiCallback("ERREUR : Source introuvable."); return; }
+                if (!Directory.Exists(job.Source)) { uiCallback("ERREUR : Source introuvable."); job.State = "ERREUR"; return; }
 
                 string[] allFiles = Directory.GetFiles(job.Source, "*.*", SearchOption.AllDirectories);
                 int totalFiles = allFiles.Length;
@@ -115,37 +116,44 @@ namespace EasySave.Core.Controller
                 
                 UpdateEtat(job.Name, job.Source, job.Target, "ACTIF", totalFiles, totalSize, filesLeft, sizeLeft);
                 List<string> extensionsToEncrypt = settings.ExtensionsToEncrypt.Split(',').Select(e => e.Trim().ToLower()).ToList();
+                
                 void ProcessFile(string file, bool isPriority)
                 {
                     if (IsPausedRequested)
                     {
+                        job.State = "PAUSE";
                         UpdateEtat(job.Name, file, "", "PAUSE", totalFiles, totalSize, filesLeft, sizeLeft);
                         uiCallback("PAUSE : " + job.Name);
                     }
                     while (businessSoftwareService.IsBusinessSoftRunning())
                     {
+                        job.State = "ATTENTE METIER";
                         UpdateEtat(job.Name, file, "", "ATTENTE METIER", totalFiles, totalSize, filesLeft, sizeLeft);
                         Thread.Sleep(1000); 
                     }
+                    job.State = "ACTIF";
 
                     if (!isPriority)
                     {
                         while (true)
                         {
                             lock (_priorityLock) { if (_globalPriorityFilesCount == 0) break; }
+                            job.State = "ATTENTE PRIORITE";
                             UpdateEtat(job.Name, file, "", "ATTENTE PRIORITE", totalFiles, totalSize, filesLeft, sizeLeft);
                             Thread.Sleep(500);
                         }
+                        job.State = "ACTIF";
                     }
 
                     string relatif = file.Replace(job.Source, "").TrimStart('\\');
                     string dest = Path.Combine(job.Target, relatif);
                     long fileSize = new FileInfo(file).Length;
+                    
                     if (!job.IsFull && File.Exists(dest) && File.GetLastWriteTime(file) <= File.GetLastWriteTime(dest))
                     {
                         filesLeft--; sizeLeft -= fileSize;
                         UpdateEtat(job.Name, file, dest, "ACTIF", totalFiles, totalSize, filesLeft, sizeLeft);
-                        if (isPriority) lock (_priorityLock) { _globalPriorityFilesCount--; } // Retrait du compteur
+                        if (isPriority) lock (_priorityLock) { _globalPriorityFilesCount--; } 
                         return;
                     }
 
@@ -158,12 +166,12 @@ namespace EasySave.Core.Controller
                     double encryptionTime = 0;
                     bool isLargeFile = (settings.MaxParallelFileSizeKb > 0) && (fileSize > settings.MaxParallelFileSizeKb * 1024);
 
- try
+                    try
                     {
-                        Action processFile = () => 
+                        Action processFileInner = () => 
                         {
                             File.Copy(file, dest, true);
-                            // Thread.Sleep(2000);
+                            Thread.Sleep(2000);
                             string ext = Path.GetExtension(dest).ToLower().Replace(".", "");
                             if (extensionsToEncrypt.Contains(ext))
                             {
@@ -175,14 +183,13 @@ namespace EasySave.Core.Controller
                         {
                             lock (_largeFileLock)
                             {
-                                processFile();
+                                processFileInner();
                             }
                         }
                         else
                         {
-                            processFile();
+                            processFileInner();
                         }
-
 
                         sw.Stop();
                         LogManager.SaveLog(job.Name, file, dest, fileSize, sw.Elapsed.TotalMilliseconds, encryptionTime);
@@ -201,29 +208,38 @@ namespace EasySave.Core.Controller
                     filesLeft--; sizeLeft -= fileSize;
                     uiCallback("Copié : " + relatif);
                 }
+                
                 foreach (string file in priorityFiles) ProcessFile(file, true);
                 foreach (string file in normalFiles) ProcessFile(file, false);
 
                 UpdateEtat(job.Name, "", "", "INACTIF", totalFiles, totalSize, 0, 0);
+                job.State = "TERMINÉ";
                 uiCallback("Succès : " + job.Name);
             }
-            catch (Exception ex) { uiCallback("ERREUR CRITIQUE : " + ex.Message); }
+            catch (Exception ex) 
+            { 
+                job.State = "ERREUR";
+                uiCallback("ERREUR CRITIQUE : " + ex.Message); 
+            }
         }
 
         private void UpdateEtat(string jobName, string src, string dest, string state, int totalF, long totalS, int leftF, long leftS)
+{
+    try
+    {
+        int prog = (totalF > 0) ? 100 - (leftF * 100 / totalF) : 100;
+        ModelEtat etat = new ModelEtat()
         {
-            try
-            {
-                int prog = (totalF > 0) ? 100 - (leftF * 100 / totalF) : 100;
-                ModelEtat etat = new ModelEtat()
-                {
-                    Name = jobName, SourceFile = src, TargetFile = dest, State = state,
-                    TotalFiles = totalF, TotalSize = totalS, FilesLeft = leftF, SizeLeft = leftS,
-                    Progression = prog, Timestamp = DateTime.Now.ToString("dd/MM/yyyy HH:mm:ss")
-                };
-                File.WriteAllText(stateFile, JsonConvert.SerializeObject(etat, Formatting.Indented));
-            }
-            catch { }
+            Name = jobName, SourceFile = src, TargetFile = dest, State = state,
+            TotalFiles = totalF, TotalSize = totalS, FilesLeft = leftF, SizeLeft = leftS,
+            Progression = prog, Timestamp = DateTime.Now.ToString("dd/MM/yyyy HH:mm:ss")
+        };
+        lock (_stateLock)
+        {
+            File.WriteAllText(stateFile, JsonConvert.SerializeObject(etat, Formatting.Indented));
         }
+    }
+    catch { }
+}
     }
 }

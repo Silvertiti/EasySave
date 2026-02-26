@@ -9,33 +9,37 @@ namespace EasySave.Core.Services
     {
         private static string logFolder = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "logs");
         private static SettingsManager _settingsManager = new SettingsManager();
+        private static readonly object _logLock = new object();
+
         public static void SaveLog(string jobName, string source, string target, long size, double transferTime, double encryptionTime)
         {
             var settings = _settingsManager.GetSettings();
             string format = settings.LogFormat.ToLower();
-
-            Directory.CreateDirectory(logFolder);
-            string fileName = DateTime.Now.ToString("yyyy-MM-dd") + "." + format;
-            string filePath = Path.Combine(logFolder, fileName);
-
-            var logEntry = new
+            lock (_logLock)
             {
-                Timestamp = DateTime.Now.ToString("dd/MM/yyyy HH:mm:ss"),
-                BackupName = jobName,
-                SourcePath = source,
-                TargetPath = target,
-                FileSize = size,
-                TransferTime = transferTime + " ms",
-                EncryptionTime = encryptionTime
-            };
+                Directory.CreateDirectory(logFolder);
+                string fileName = DateTime.Now.ToString("yyyy-MM-dd") + "." + format;
+                string filePath = Path.Combine(logFolder, fileName);
 
-            if (format == "xml")
-            {
-                AppendXml(filePath, logEntry);
-            }
-            else
-            {
-                AppendJson(filePath, logEntry);
+                var logEntry = new
+                {
+                    Timestamp = DateTime.Now.ToString("dd/MM/yyyy HH:mm:ss"),
+                    BackupName = jobName,
+                    SourcePath = source,
+                    TargetPath = target,
+                    FileSize = size,
+                    TransferTime = transferTime + " ms",
+                    EncryptionTime = encryptionTime
+                };
+
+                if (format == "xml")
+                {
+                    AppendXml(filePath, logEntry);
+                }
+                else
+                {
+                    AppendJson(filePath, logEntry);
+                }
             }
         }
 
