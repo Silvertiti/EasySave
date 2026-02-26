@@ -5,6 +5,8 @@ using System.Net.Sockets;
 using System.Text;
 using System.Threading.Tasks;
 using EasySave.Core.Controller;
+using EasySave.Core.Models;
+using System.Linq;
 
 namespace EasySave.Core.Services
 {
@@ -12,7 +14,10 @@ namespace EasySave.Core.Services
     {
         public const int Port = 11000;
         public bool IsRunning { get; private set; }
+        
         public event Action<string>? OnLog;
+        public event Action<ModelJob>? OnRunJobRequested;
+        public event Action? OnRunAllRequested;
 
         private TcpListener? _listener;
         private SauvegardeController? _controller;
@@ -60,15 +65,12 @@ namespace EasySave.Core.Services
                 var stream = tcp.GetStream();
                 var reader = new StreamReader(stream, Encoding.UTF8);
 
-                // Lire la requête HTTP (GET /path HTTP/1.1)
                 string? requestLine = reader.ReadLine();
                 if (requestLine == null) return;
 
-                // Lire les headers
                 string? header;
                 while (!string.IsNullOrEmpty(header = reader.ReadLine())) { }
 
-                // Extraire le chemin
                 string pathFull = "/";
                 var parts = requestLine.Split(' ', StringSplitOptions.RemoveEmptyEntries);
                 if (parts.Length >= 2) pathFull = parts[1];
@@ -76,7 +78,6 @@ namespace EasySave.Core.Services
 
                 var writer = new StreamWriter(stream, new UTF8Encoding(false)) { AutoFlush = true };
 
-                // Headers HTTP
                 writer.WriteLine("HTTP/1.1 200 OK");
                 writer.WriteLine("Access-Control-Allow-Origin: *");
                 writer.WriteLine("Connection: close");
@@ -87,8 +88,7 @@ namespace EasySave.Core.Services
                     var job = _controller?.myJobs.FirstOrDefault(j => j.Name == jobName);
                     if (job != null)
                     {
-                        if (_controller != null) _controller.IsPausedRequested = false;
-                        Task.Run(() => _controller?.ExecuterUnSeulJob(job, msg => Log(msg)));
+                        OnRunJobRequested?.Invoke(job);
                     }
                     writer.WriteLine("Content-Type: application/json; charset=utf-8");
                     writer.WriteLine();
@@ -96,38 +96,23 @@ namespace EasySave.Core.Services
                 }
                 else if (path == "/run")
                 {
-                    if (_controller != null) _controller.IsPausedRequested = false;
-                    Task.Run(() => _controller?.ExecuterSauvegarde(msg => Log(msg)));
+                    OnRunAllRequested?.Invoke();
                     writer.WriteLine("Content-Type: application/json; charset=utf-8");
                     writer.WriteLine();
                     writer.WriteLine("{\"status\":\"started_all\"}");
-                }
-                else if (path == "/list")
-                {
-                    writer.WriteLine("Content-Type: text/plain; charset=utf-8");
-                    writer.WriteLine();
-                    if (_controller == null || _controller.myJobs.Count == 0)
-                        writer.WriteLine("Aucun job configuré.");
-                    else
-                        foreach (var j in _controller.myJobs)
-                            writer.WriteLine($"{j.Name} | {j.Source} -> {j.Target}");
                 }
                 else if (path == "/pause")
                 {
                     if (_controller != null) _controller.IsPausedRequested = true;
                     writer.WriteLine("Content-Type: application/json; charset=utf-8");
-                    writer.WriteLine("Access-Control-Allow-Origin: *");
                     writer.WriteLine();
                     writer.WriteLine("{\"status\":\"paused\"}");
                 }
                 else if (path == "/status")
                 {
                     writer.WriteLine("Content-Type: application/json; charset=utf-8");
-                    writer.WriteLine("Access-Control-Allow-Origin: *");
                     writer.WriteLine();
-                    writer.WriteLine(File.Exists("state.json")
-                        ? File.ReadAllText("state.json")
-                        : "{}");
+                    writer.WriteLine(File.Exists("state.json") ? File.ReadAllText("state.json") : "{}");
                 }
                 else if (path == "/logs")
                 {
@@ -176,7 +161,6 @@ function changeLangLogs(l) {{
 
                     writer.WriteLine("Content-Type: text/html; charset=utf-8");
                     writer.WriteLine($"Content-Length: {Encoding.UTF8.GetByteCount(htmlLogs)}");
-                    writer.WriteLine("Access-Control-Allow-Origin: *");
                     writer.WriteLine();
                     writer.Write(htmlLogs);
                 }
@@ -195,7 +179,6 @@ function changeLangLogs(l) {{
                         }
                     }
 
-                    // Page d'accueil HTML
                     string html = $@"<!DOCTYPE html>
 <html><head><meta charset=""utf-8""><title>EasySave Monitor</title>
 <style>

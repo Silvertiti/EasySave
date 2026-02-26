@@ -1,12 +1,12 @@
 {
-  "Name": "2",
-  "SourceFile": "",
-  "TargetFile": "",
-  "State": "INACTIF",
-  "TotalFiles": 3,
-  "TotalSize": 991924,
-  "FilesLeft": 0,
-  "SizeLeft": 0,
-  "Progression": 100,
-  "Timestamp": "26/02/2026 20:53:11"
+  "Name": "1",
+  "SourceFile": "F:\\CESI\\ALTERNANCE 2025-2028\\ALTERNANCE 2025-2026\\Projet EasySave\\test source 1\\Livrable_doc_easysave.jpg",
+  "TargetFile": "F:\\CESI\\ALTERNANCE 2025-2028\\ALTERNANCE 2025-2026\\Projet EasySave\\test cible 1\\Livrable_doc_easysave.jpg",
+  "State": "ACTIF",
+  "TotalFiles": 2,
+  "TotalSize": 991913,
+  "FilesLeft": 1,
+  "SizeLeft": 181037,
+  "Progression": 50,
+  "Timestamp": "26/02/2026 21:09:29"
 }

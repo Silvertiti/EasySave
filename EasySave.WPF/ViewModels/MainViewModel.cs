@@ -3,10 +3,12 @@ using EasySave.Core.Services;
 using System.Collections.ObjectModel;
 using System.Windows;
 using System.IO;
+using System.Linq;
 using System.Threading.Tasks;
 using EasySave.Core.Controller;
 using CommunityToolkit.Mvvm.Input;
 using CommunityToolkit.Mvvm.ComponentModel;
+using System;
 
 namespace EasySave.WPF.ViewModels
 {
@@ -42,8 +44,9 @@ namespace EasySave.WPF.ViewModels
             BtnSettingsText  = "⚙  " + GetTxt("Settings", "Paramètres");
 
             _server.OnLog += msg => Application.Current.Dispatcher.Invoke(() => AppendLog(msg));
+            _server.OnRunJobRequested += job => Application.Current.Dispatcher.Invoke(() => RunJob(job));
+            _server.OnRunAllRequested += () => Application.Current.Dispatcher.Invoke(() => RunAllSave());
 
-            // Polling state.json uniquement pour la barre de progression globale
             Task.Run(async () =>
             {
                 while (true)
@@ -70,7 +73,6 @@ namespace EasySave.WPF.ViewModels
             });
         }
 
-        // ── Serveur ───────────────────────────────────────────────────────
         public void ToggleServer()
         {
             if (_server.IsRunning)
@@ -78,6 +80,8 @@ namespace EasySave.WPF.ViewModels
                 _server.Stop();
                 _server = new BackupServer();
                 _server.OnLog += msg => Application.Current.Dispatcher.Invoke(() => AppendLog(msg));
+                _server.OnRunJobRequested += job => Application.Current.Dispatcher.Invoke(() => RunJob(job));
+                _server.OnRunAllRequested += () => Application.Current.Dispatcher.Invoke(() => RunAllSave());
                 IsServerRunning = false;
             }
             else { _server.Start(_model); IsServerRunning = true; }
@@ -92,12 +96,10 @@ namespace EasySave.WPF.ViewModels
         public string SendClientCommand(string host, int port, string command)
             => new BackupClient(host, port).SendCommand(command);
 
-        // ── Tout lancer ───────────────────────────────────────────────────
         public async void RunAllSave()
         {
             if (JobsList.Count == 0) { MessageBox.Show("Liste vide", "Info"); return; }
 
-            // Réinitialiser les flags de chaque job et les marquer RUNNING
             foreach (var j in JobsList)
             {
                 j.IsPauseRequested = false;
@@ -109,7 +111,6 @@ namespace EasySave.WPF.ViewModels
             BackupProgress   = 0;
             BackupStatusText = "Lancement de tous les jobs...";
 
-            // On lance chaque job dans sa propre tâche pour pouvoir les contrôler indépendamment
             var tasks = JobsList.Select(job => Task.Run(() =>
                 _model.ExecuterUnSeulJob(job, msg =>
                     Application.Current.Dispatcher.Invoke(() =>
@@ -123,10 +124,9 @@ namespace EasySave.WPF.ViewModels
 
             await Task.WhenAll(tasks);
 
-            // Fin : mettre à jour l'état visuel de chaque job
             foreach (var j in JobsList)
             {
-                if (j.State == "RUNNING") // pas encore modifié par Stop/Pause
+                if (j.State == "RUNNING")
                     j.State = "STOPPED";
             }
 
@@ -138,12 +138,10 @@ namespace EasySave.WPF.ViewModels
             BackupStatusText = "";
         }
 
-        // ── Lancer / Pause / Reprendre un job individuel ──────────────────
         public async void RunJob(ModelJob job)
         {
             if (job == null) return;
 
-            // RUNNING → Pause
             if (job.State == "RUNNING")
             {
                 job.IsPauseRequested = true;
@@ -152,20 +150,15 @@ namespace EasySave.WPF.ViewModels
                 return;
             }
 
-            // PAUSED → Reprise
             if (job.State == "PAUSED")
             {
                 job.IsPauseRequested = false;
                 job.IsStopRequested  = false;
                 job.State            = "RUNNING";
                 BackupStatusText     = $"Reprise de '{job.Name}'...";
-                // Le thread du controller est encore en vie et attend IsPauseRequested == false
-                // → il reprend automatiquement, pas besoin de relancer ExecuterUnSeulJob
                 return;
             }
 
-            // STOPPED → Démarrage normal
-            // Si un job solo tourne déjà, on bloque
             if (IsBackupRunning) return;
 
             IsBackupRunning      = true;
@@ -187,7 +180,6 @@ namespace EasySave.WPF.ViewModels
                 )
             );
 
-            // État final
             if (job.IsStopRequested)
             {
                 job.State        = "STOPPED";
@@ -207,7 +199,6 @@ namespace EasySave.WPF.ViewModels
             IsBackupRunning = false;
         }
 
-        // ── Stop immédiat d'un job (bouton Stop rouge) ────────────────────
         public void StopJob(ModelJob job)
         {
             if (job == null) return;
@@ -218,7 +209,6 @@ namespace EasySave.WPF.ViewModels
             job.State            = "STOPPED";
             BackupStatusText     = $"'{job.Name}' arrêté.";
 
-            // Si c'était le seul job solo en cours, libérer le verrou global
             bool anyStillRunning = JobsList.Any(j => j.State == "RUNNING" || j.State == "PAUSED");
             if (!anyStillRunning)
             {
@@ -227,7 +217,6 @@ namespace EasySave.WPF.ViewModels
             }
         }
 
-        // ── CRUD jobs ─────────────────────────────────────────────────────
         public void DeleteJob(ModelJob job)
         {
             if (MessageBox.Show($"Supprimer {job.Name} ?", "Confirmation", MessageBoxButton.YesNo)
