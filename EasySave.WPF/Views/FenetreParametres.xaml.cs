@@ -23,6 +23,7 @@ namespace EasySave.WPF
             TxtExtensions.Text = _settings.ExtensionsToEncrypt;
             TxtBusinessSoft.Text = _settings.BusinessSoftware;
             TxtCryptoPath.Text = _settings.CryptoSoftPath;
+            TxtMaxParallelFileSizeKb.Text = _settings.MaxParallelFileSizeKb.ToString();
 
             if (_settings.LogFormat == "xml") RadioXml.IsChecked = true;
             else RadioJson.IsChecked = true;
@@ -36,6 +37,15 @@ namespace EasySave.WPF
             _settings.BusinessSoftware = TxtBusinessSoft.Text.Trim();
             _settings.CryptoSoftPath = TxtCryptoPath.Text.Trim();
             _settings.LogFormat = (RadioXml.IsChecked == true) ? "xml" : "json";
+            
+            if (long.TryParse(TxtMaxParallelFileSizeKb.Text.Trim(), out long maxKb))
+            {
+                _settings.MaxParallelFileSizeKb = maxKb;
+            }
+            else
+            {
+                _settings.MaxParallelFileSizeKb = 10000;
+            }
 
             settingsManager.SaveSettings(_settings);
 
